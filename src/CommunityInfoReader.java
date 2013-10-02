@@ -39,7 +39,7 @@ public class CommunityInfoReader extends HTMLReader {
 	        		String name = li.text();
 	        		if (link.contains("http://") && !inBlackList(link)) {
 	        			HashMap<String,String> comunity = new HashMap<String,String>();
-	        			comunity.put("name", name);
+	        			comunity.put("name", name.replace("\"",""));
 	        			comunity.put("url", link);
 	        			System.out.println("Community: " + name);
 	        			HashMap<String,String> comStatistics = statsReader.getCommunityStatistic(link);
