@@ -1,15 +1,20 @@
-package src;
+package web;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
+import java.net.URI;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
+import com.sun.tools.javac.util.Context;
 
 public class HTMLReader {
 
@@ -52,16 +57,22 @@ public class HTMLReader {
      * @throws Exception 
      * @throws ApiException If any connection or server error occurs.
      */
-    protected synchronized String getUrlContent(String url) 
+    public synchronized String getUrlContent(URI url) 
     throws Exception 
     {
         if (sUserAgent == null)
         	throw new Exception("User-Agent string must be prepared");
         
         // Create client and set our specific user-agent string
-        HttpClient client = new DefaultHttpClient();
+        /*RequestConfig globalConfig = RequestConfig.custom()
+				.setCookieSpec(CookieSpecs.NETSCAPE)
+				.build();*/
+        
+        HttpClient client = HttpClients.createDefault();
         HttpGet request = new HttpGet(url);
         request.setHeader("User-Agent", sUserAgent);
+
+        //request.setConfig(globalConfig);
 
         try {
         	
@@ -73,7 +84,7 @@ public class HTMLReader {
                 throw new Exception("Invalid response from server: " +
                         		     status.toString());
             }
-    
+            
             // Pull content stream from response
             HttpEntity entity = response.getEntity();
             InputStream inputStream = entity.getContent();
@@ -93,4 +104,25 @@ public class HTMLReader {
         }
     }
 	
+    public boolean checkHTTPSecureProtocol(String url) {
+    	HttpClient client = HttpClients.createDefault();
+    	RequestConfig requestConfig = RequestConfig.custom().
+    								  setRedirectsEnabled(false).build();
+    	HttpGet request = new HttpGet(url);
+    	request.setConfig(requestConfig);
+    	HttpResponse response;
+		try {
+			response = client.execute(request);
+	    	// expect a 302 response.
+	    	if (response.getStatusLine().getStatusCode() == 302)
+	    		return true;
+	    	return false;
+		} catch (ClientProtocolException e) {
+			e.printStackTrace();
+	    	return false;
+		} catch (IOException e) {
+			e.printStackTrace();
+	    	return false;
+		}
+    }
 }

@@ -1,0 +1,359 @@
+package web;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.logging.Logger;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import src.Crawler;
+import src.Util;
+
+
+public class CommunityInfoReader extends HTMLReader {
+	private final static Logger logger = Logger.getLogger(CommunityInfoReader.class .getName()); 
+	private StatisticReader statsReader = null;
+	
+	public CommunityInfoReader() {
+		super();
+		prepareUserAgent();
+		statsReader = new StatisticReader();
+	}
+	
+	public HashMap<String,Object> readCommunityStats(String url, String name) {
+		Util.printMessage("Getting stats of the community: " + name,"info",logger);
+		HashMap<String,Object> comStatistics = statsReader.getCommunityStatistic(url);
+		comStatistics.put("name", name.replace("\"",""));
+		comStatistics.put("url", url);
+		
+		return comStatistics;
+	}
+	
+	public ArrayList<HashMap<String,Object>> getCommunityStatsAndIdeas(String communityURL) 
+	throws Exception {
+		Integer pageNum = 0;
+		String SUFFIX = "&pageOffset=";
+		String IDEA_CONTENT_CLASS = "content";
+		String IDEA_TITLE_CLASS = "title";
+		String IDEA_AUTHOR_ATTR_KEY = "rel";
+		String IDEA_AUTHOR_ATTR_VAL = "user";
+		String IDEA_CREATION_TIME = "published";
+		Integer ideasProcessed = 0;
+		Document doc;
+		ArrayList<HashMap<String,Object>> info = new ArrayList<HashMap<String,Object>>();
+		
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
+		Util.printMessage("Getting community's stats and ideas","info",logger);
+		
+		//Get community statistics
+		HashMap<String,Object> comStatistics = statsReader.getCommunityStatistic(communityURL);
+		comStatistics.put("type", "community");
+		
+		//Get enabled tabs
+		ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) comStatistics.get("tabs");
+		
+		info.add(comStatistics);
+		
+		for (HashMap<String,String> tab : tabs) {
+			String currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
+			String page = getUrlContent(Util.toURI(currentPage));
+			Integer tabIdeas = Integer.parseInt(tab.get("ideas"));
+			ideasProcessed = 0;
+			
+			Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
+			
+			doc = Jsoup.parse(page);
+			while (ideasProcessed < tabIdeas) {
+				Element ideasList = doc.getElementById("ideas");
+				for (Element ideaList : ideasList.children()) {
+					ideasProcessed += 1;
+					String ideaId = ideaList.attr("id").split("-")[1];
+					if (isNewIdea(ideaId,info)) {
+						Elements ideaContentElems = ideaList.getElementsByClass(IDEA_CONTENT_CLASS);
+						if (ideaContentElems != null) {
+							Element ideaContent = ideaContentElems.first();
+							Elements ideaTitleElems = ideaContent.getElementsByClass(IDEA_TITLE_CLASS);
+							if (ideaTitleElems != null) {
+								Element ideaTitle = ideaTitleElems.first();
+								String ideaLink = ideaTitle.child(0).attr("href");
+								HashMap<String,Object> ideaStats = statsReader.getIdeaStatistics(communityURL,ideaLink);
+								ideaStats.put("type", "idea");
+								ideaStats.put("title", ideaTitle.text());
+								ideaStats.put("url", communityURL+ideaLink);
+								ideaStats.put("id", ideaId);
+								Elements ideaAuthorElems = ideaList.getElementsByAttributeValue(IDEA_AUTHOR_ATTR_KEY, IDEA_AUTHOR_ATTR_VAL);
+								if (ideaAuthorElems != null)
+									ideaStats.put("author", ideaAuthorElems.text());
+								else
+									ideaStats.put("author", null);
+								Elements ideaDTElems = ideaList.getElementsByClass(IDEA_CREATION_TIME);
+								if (ideaDTElems != null) {
+									String[] ideaDT = ideaDTElems.first().attr("title").split("T");
+									Date ideaDateTime = formatter.parse(ideaDT[0]+" "+ideaDT[1].split("-")[0]);
+									ideaStats.put("datetime", ideaDateTime);
+								}
+								else {
+									ideaStats.put("datetime", null);
+								}
+								info.add(ideaStats);
+							}
+							else {
+								throw new Exception("Couldn't find idea's title");
+							}
+						}
+						else {
+							throw new Exception("Couldn't find idea's content");
+						}
+					}
+				}
+				pageNum += 1;
+				currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
+				Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
+				page = getUrlContent(Util.toURI(currentPage));
+				doc = Jsoup.parse(page);
+			}
+			
+			//Wait for a moment to avoid being banned
+			double rand = Math.random() * 5;		        			
+			Thread.sleep((long) (rand * 1000)); 
+			pageNum = 0;
+		}
+		
+		return info;
+	}
+	
+	private boolean isNewIdea(String idIdea, ArrayList<HashMap<String,Object>> elems) {
+		for (HashMap<String,Object> elem : elems) {
+			if (elem.get("type") == "idea" && 
+				elem.get("id") == idIdea) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public HashMap<String,Object> getCommunityLifeSpan(String urlCommunity, 
+													   ArrayList<HashMap<String,String>> tabs) 
+	throws Exception 
+	{
+		final String SUFFIX = "&pageOffset=";
+		final Integer MAXIDEAS = 3; 
+		
+		HashMap<String,Object> communityInfo = new HashMap<String,Object>();
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+		Date ideaCreationDate = null;
+		Date dateFirstIdea = null;
+		ArrayList<Date> dateLastIdeas = new ArrayList<Date>();
+		Integer pageNum = 0;
+		Integer ideasProcessed = 0;
+		
+		Util.printMessage("Calculating the lifespan of the community: " + 
+					  urlCommunity,"info",logger);
+		
+		int counterLastIdeas = 0;
+		for (HashMap<String,String> tab : tabs) {
+			String currentPage = urlCommunity+tab.get("url")+SUFFIX+pageNum.toString();
+			String page = getUrlContent(Util.toURI(currentPage));
+			Integer tabIdeas = Integer.parseInt(tab.get("ideas"));
+			ideasProcessed = 0;
+			
+			Util.printMessage("Getting idea's creation time of the community page: " + 
+						  currentPage,"info",logger);
+			
+			Document doc = Jsoup.parse(page);
+			while (ideasProcessed < tabIdeas) {
+				Element ideaList = doc.getElementById("ideas");
+				for (Element idea : ideaList.children()) {
+					ideasProcessed += 1;
+					ideaCreationDate = format.parse(getIdeaCreationDate(idea));
+					if (dateFirstIdea == null ||
+						isOlderIdea(ideaCreationDate,dateFirstIdea))
+						dateFirstIdea = ideaCreationDate;
+					if (dateLastIdeas.isEmpty() ||
+						counterLastIdeas < MAXIDEAS) {
+						dateLastIdeas.add(ideaCreationDate);
+						counterLastIdeas += 1;
+					}
+					else {
+						if (isNewerIdea(ideaCreationDate,dateLastIdeas)) {
+							dateLastIdeas.remove(getIndexOldestIdea(dateLastIdeas));  /* Remove the oldest idea */
+							dateLastIdeas.add(ideaCreationDate); /* Add the newest one */
+						}
+					} 
+				}
+				pageNum += 1;
+				currentPage = urlCommunity+tab.get("url")+SUFFIX+pageNum.toString();
+				page = getUrlContent(Util.toURI(currentPage));
+				doc = Jsoup.parse(page);
+			}
+			
+			//Wait for a moment to avoid being banned
+			double rand = Math.random() * 5;		        			
+			Thread.sleep((long) (rand * 1000));
+			
+			pageNum = 0;
+		}
+		
+		/* If it is not a closed community */
+		if (!dateLastIdeas.isEmpty() && dateFirstIdea != null) {
+			Collections.sort(dateLastIdeas);
+			int lenghtArrayLastIdeas = dateLastIdeas.size();
+			Date dateLastIdea = dateLastIdeas.get(lenghtArrayLastIdeas-1);
+			/* Save the information */
+			communityInfo.put("dateLastIdea", dateLastIdea);
+			communityInfo.put("dateFirstIdea", dateFirstIdea);
+			communityInfo.put("lifespan", calculateLifeSpan(dateFirstIdea, 
+															dateLastIdea));
+			communityInfo.put("status", getCommunityStatus(dateLastIdeas));
+		}
+		else {
+			communityInfo.put("dateLastIdea", null);
+			communityInfo.put("dateFirstIdea", null);
+			communityInfo.put("lifespan", null);
+			communityInfo.put("status", "closed");
+		}
+		
+		return communityInfo;
+	}
+	
+	/**
+	 * The heuristic is simple: for being considered open, the last 5-ideas
+	 * of a community have to be newer than the reference date (01-01-13)
+	 * @param lastIdeas Array containing the date of the latest ideas
+	 * @return the status
+	 */
+	private String getCommunityStatus(ArrayList<Date> lastIdeas) {
+		/* Reference Date 01-01-2013 */
+		Calendar cal = Calendar.getInstance();
+		cal.set(Calendar.YEAR,2013);
+		cal.set(Calendar.MONTH, Calendar.JANUARY);
+		cal.set(Calendar.DAY_OF_MONTH,1);
+		Date refDate = cal.getTime();
+		Date lastIdea = lastIdeas.get(lastIdeas.size()-1);
+		if (lastIdea.before(refDate)) {
+			return "inactive";
+		}
+		else {
+			for (Date idea : lastIdeas)
+				if (idea.before(refDate))
+					return "inactive";
+			return "active";
+		}
+	}
+	
+	private int getIndexOldestIdea(ArrayList<Date> lastIdeas) {
+		int indexOI = 0;
+		Date oldestIdea = lastIdeas.get(0);
+		for (int i = 0; i < lastIdeas.size(); i++) {
+			if (oldestIdea.after(lastIdeas.get(i))) {
+				oldestIdea = lastIdeas.get(i);
+				indexOI = i;
+			}
+		}
+		return indexOI;
+	}
+	
+	private boolean isNewerIdea(Date currentIdea, ArrayList<Date> lastIdeas) 
+	throws ParseException 
+	{
+		Collections.sort(lastIdeas);
+		if (currentIdea.after(lastIdeas.get(0))) {
+			for (Date idea : lastIdeas) {
+				if (currentIdea.equals(idea))
+					return false;
+			}
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	private boolean isOlderIdea(Date currentIdea, Date firstIdea) 
+	throws ParseException 
+	{
+		if (currentIdea.before(firstIdea)) return true;
+		else return false;
+	}
+	
+	private String getIdeaCreationDate(Element idea) {
+		Element ideaCreationDate = idea.getElementsByClass("published").first();
+		return ideaCreationDate.attr("title").split("T")[0];
+	}
+	
+	private int calculateLifeSpan(Date firstIdea, Date lastIdea) {
+		long diff = lastIdea.getTime()-firstIdea.getTime();
+		long diffDays = diff / (24 * 60 * 60 * 1000);
+		int lifeSpanInDays = (int) diffDays + 1; /* Considering the kickoff date */
+		return lifeSpanInDays; 
+	}
+	
+	public Boolean inBlackList(String link) {
+		List<String> blackList = new ArrayList<String>(
+								 Arrays.asList("support.ideascale",
+								 			   "blog.ideascale",
+								 			   "twitter.com/ideascale",
+								 			   "facebook.com/ideascale",
+								 			   "www.surveyanalytics.com/?utm_source=IdeaScale",
+								 			   "www.questionpro.com/?utm_source=IdeaScale",
+								 			   "www.micropoll.com/?utm_source=IdeaScale",
+								 			   "www.researchaccess.com/?utm_source=IdeaScale"));
+		for (String item : blackList)
+			if (link.contains(item))
+				return true;
+		return false;
+	}
+	
+	/*public List<HashMap<String,Object>> getCommunitiesInfo() {
+		List<HashMap<String,Object>> comunities = new ArrayList<HashMap<String,Object>>();
+		List<String> letterDir = new ArrayList<String>(
+					Arrays.asList("a","b","c","d","e","f","g","h","i","j","k",
+							      "l","m","n","o","p","q","r","s","t","u","v",
+							      "w","x","y","z"));
+		try {
+			for (String letter : letterDir) {
+				System.out.println("Starting with communities of cat: " + letter.toUpperCase() + ".");
+				String content = getUrlContent(urlDir+letter+".html");
+		        Document doc = Jsoup.parse(content);	        
+		        Elements liElements = doc.getElementsByTag("li");
+		        for (Element li : liElements)
+		        	if (li.children().size() > 0) {
+		        		String link = li.child(0).attr("href");
+		        		String name = li.text();
+		        		if (link.contains("http://") && !inBlackList(link)) {
+		        			HashMap<String,Object> comunity = readCommunityStats(link, name);		        			
+		        			comunities.add(comunity);
+		        		}
+		        	}
+		        System.out.println("Communities cat: " + letter.toUpperCase() + " finished.");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return comunities;
+	}
+	
+	public void existsCommunity(String urlCommunity) throws Exception {
+		getUrlContent(urlCommunity);
+	}
+	
+		
+	private boolean emptyList(Document doc) {
+		Elements e = doc.getElementsByClass("no-ideas");
+		if (e.size() > 0)
+			return true;
+		else
+			return false;
+	}*/
+}
