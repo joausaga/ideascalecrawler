@@ -74,17 +74,17 @@ public class CommunityInfoReader extends HTMLReader {
 			Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
 			
 			doc = Jsoup.parse(page);
-			while (ideasProcessed < tabIdeas) {
+			while (ideasProcessed < tabIdeas || !emptyList(doc)) {
 				Element ideasList = doc.getElementById("ideas");
 				for (Element ideaList : ideasList.children()) {
 					ideasProcessed += 1;
 					String ideaId = ideaList.attr("id").split("-")[1];
 					if (isNewIdea(ideaId,info)) {
 						Elements ideaContentElems = ideaList.getElementsByClass(IDEA_CONTENT_CLASS);
-						if (ideaContentElems != null) {
+						if (!ideaContentElems.isEmpty()) {
 							Element ideaContent = ideaContentElems.first();
 							Elements ideaTitleElems = ideaContent.getElementsByClass(IDEA_TITLE_CLASS);
-							if (ideaTitleElems != null) {
+							if (!ideaTitleElems.isEmpty()) {
 								Element ideaTitle = ideaTitleElems.first();
 								String ideaLink = ideaTitle.child(0).attr("href");
 								HashMap<String,Object> ideaStats = statsReader.getIdeaStatistics(communityURL,ideaLink);
@@ -93,12 +93,19 @@ public class CommunityInfoReader extends HTMLReader {
 								ideaStats.put("url", communityURL+ideaLink);
 								ideaStats.put("id", ideaId);
 								Elements ideaAuthorElems = ideaList.getElementsByAttributeValue(IDEA_AUTHOR_ATTR_KEY, IDEA_AUTHOR_ATTR_VAL);
-								if (ideaAuthorElems != null)
-									ideaStats.put("author", ideaAuthorElems.text());
-								else
-									ideaStats.put("author", null);
+								if (!ideaAuthorElems.isEmpty()) {
+									ideaStats.put("author-name", ideaAuthorElems.text());
+									String authorId = ideaAuthorElems.attr("href");
+									authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
+									authorId = authorId.split("-")[0];
+									ideaStats.put("author-id", authorId);
+								}
+								else {
+									ideaStats.put("author-name", "Unsuscribed User");
+									ideaStats.put("author-id", "-1");
+								}
 								Elements ideaDTElems = ideaList.getElementsByClass(IDEA_CREATION_TIME);
-								if (ideaDTElems != null) {
+								if (!ideaDTElems.isEmpty()) {
 									String[] ideaDT = ideaDTElems.first().attr("title").split("T");
 									Date ideaDateTime = formatter.parse(ideaDT[0]+" "+ideaDT[1].split("-")[0]);
 									ideaStats.put("datetime", ideaDateTime);
@@ -172,7 +179,8 @@ public class CommunityInfoReader extends HTMLReader {
 						  currentPage,"info",logger);
 			
 			Document doc = Jsoup.parse(page);
-			while (ideasProcessed < tabIdeas) {
+
+			while (ideasProcessed < tabIdeas || !emptyList(doc)) {
 				Element ideaList = doc.getElementById("ideas");
 				for (Element idea : ideaList.children()) {
 					ideasProcessed += 1;
@@ -315,6 +323,14 @@ public class CommunityInfoReader extends HTMLReader {
 		return false;
 	}
 	
+	private boolean emptyList(Document doc) {
+		Elements e = doc.getElementsByClass("no-ideas");
+		if (e.size() > 0)
+			return true;
+		else
+			return false;
+	}
+	
 	/*public List<HashMap<String,Object>> getCommunitiesInfo() {
 		List<HashMap<String,Object>> comunities = new ArrayList<HashMap<String,Object>>();
 		List<String> letterDir = new ArrayList<String>(
@@ -346,14 +362,5 @@ public class CommunityInfoReader extends HTMLReader {
 	
 	public void existsCommunity(String urlCommunity) throws Exception {
 		getUrlContent(urlCommunity);
-	}
-	
-		
-	private boolean emptyList(Document doc) {
-		Elements e = doc.getElementsByClass("no-ideas");
-		if (e.size() > 0)
-			return true;
-		else
-			return false;
 	}*/
 }

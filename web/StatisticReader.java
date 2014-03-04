@@ -32,11 +32,13 @@ public class StatisticReader extends HTMLReader {
 	private final static String EXPLANATION_TEXT = "client-txt";
 	private final static String TABS = "listing-nav";
 	private final static String IDEA_VOTES = "vote-number";
-	private final static String IDEA_COMMENTS_TAG = "h2";
-	private final static String IDEA_COMMENTS_ID = "comments";
+	private final static String IDEA_COMMENTS_DATE = "comment-date comment-meta";
+	private final static String IDEA_COMMENTS_ID = "comment-list";
+	private final static String IDEA_COMMENTS_DESCRIPTION = "comment-content";
+	private final static String IDEA_COMMENT_AUTHOR_NAME = 	"comment-author-name";
 	private final static String IDEA_DESCRIPTION_CLASS = "entry-content";
 	private final static String IDEA_HREF_TAGS = "/a/ideas/tag/tags/";
-	private final static String IDEA_TAGS_ATTR = "href";
+	private final static String HREF_ATTR = "href";
 	private final static String IDEA_SIMILAR_ID = "similar-idea-list";
 	
 	public StatisticReader() {
@@ -144,10 +146,11 @@ public class StatisticReader extends HTMLReader {
 		//Description
 		Elements desc = doc.getElementsByClass(IDEA_DESCRIPTION_CLASS);
 		String ideaDescription = "";
-		for (Element paragraph : desc) ideaDescription += paragraph.text();
+		for (int i = 0; i < desc.size(); i++) 
+			ideaDescription += desc.get(i).text();
 		statistics.put("description", ideaDescription);
 		//Tags
-		Elements tags = doc.getElementsByAttributeValueMatching(IDEA_TAGS_ATTR, IDEA_HREF_TAGS);
+		Elements tags = doc.getElementsByAttributeValueMatching(HREF_ATTR, IDEA_HREF_TAGS);
 		if (tags != null) {
 			String ideaTags = "";
 			int numTags = tags.size();
@@ -167,31 +170,54 @@ public class StatisticReader extends HTMLReader {
 		statistics.put("facebook", auxStats.get("facebook"));
 		statistics.put("twitter",auxStats.get("twitter"));
 		
-		Element commentElem = doc.getElementById(IDEA_COMMENTS_ID);
-		if (commentElem != null) {
-			if (commentElem.children().size() > 0) {
-				for (Element e : commentElem.children()) {
-					if (e.tagName() == IDEA_COMMENTS_TAG && e.hasClass(IDEA_COMMENTS_TAG))
-						statistics.put("comments", e.child(0).text().replaceAll("[()]",""));
-				}
-			}
-			else {
-				statistics.put("comments", "0");
-			}
+		//Get the comment counter and comments meta-info
+		Element comments = doc.getElementById(IDEA_COMMENTS_ID);
+		if (comments != null) {
+			statistics.put("comments", comments.children().size());
+			ArrayList<HashMap<String,String>> commentsMeta = new ArrayList<HashMap<String,String>>();
+			commentsMeta = getComments(comments,commentsMeta,"-1");
+			statistics.put("comments-meta", commentsMeta);
 		}
 		else {
-			statistics.put("comments", null);
+			statistics.put("comments", 0);
 		}
 		
-		Elements scoreElem = doc.getElementsByClass(IDEA_VOTES);
+		//Get vote counter and votes meta-info
+		Element scoreElem = doc.getElementById("vote-activity-list");
 		if (scoreElem != null) {
-			if (scoreElem.text().isEmpty())
-				statistics.put("score", "0");
-			else
-				statistics.put("score", scoreElem.text());
+			statistics.put("score", scoreElem.children().size());
+			ArrayList<HashMap<String,String>> votesMeta = new ArrayList<HashMap<String,String>>();
+			for (Element vote : scoreElem.children()) {
+				HashMap<String,String> voteMeta = new HashMap<String,String>();
+				Elements voter = vote.getElementsByClass("voter");
+				if (voter.size() > 1) {
+					Element eAuthor = voter.first().child(1);
+					voteMeta.put("author-name", eAuthor.text());
+					String authorId = eAuthor.attr(HREF_ATTR);
+					authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
+					authorId = authorId.split("-")[0];
+					voteMeta.put("author-id", authorId);
+				}
+				else {
+					voteMeta.put("author-name", "Unsuscribed User");
+					voteMeta.put("author-id", "-1");
+				}
+				Element type = vote.getElementsByClass("vote").first().child(0);
+				if (type.getElementsByTag("strong").attr("class").equals("up"))
+					voteMeta.put("value", "1");
+				else if (type.getElementsByTag("strong").attr("class").equals("down"))
+					voteMeta.put("value", "-1");
+				else
+					throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
+				Element date = vote.getElementsByClass("vote").first().child(1);
+				voteMeta.put("date", date.text());
+				
+				votesMeta.add(voteMeta);
+			}
+			statistics.put("votes-meta", votesMeta);
 		}
 		else {
-			statistics.put("score", null);
+			statistics.put("score", 0);
 		}
 		
 		Element similarIdeas = doc.getElementById(IDEA_SIMILAR_ID);
@@ -201,6 +227,46 @@ public class StatisticReader extends HTMLReader {
 			statistics.put("similar", 0);
 		
 		return statistics;
+	}
+	
+	private ArrayList<HashMap<String,String>> getComments(Element rootComments,
+														  ArrayList<HashMap<String,String>> commentsMeta,
+														  String parent) {
+		
+		for (Element comment : rootComments.children()) {
+			HashMap<String,String> commentMeta = new HashMap<String,String>();
+			String commentId = comment.attr("id").split("-")[1];
+			Elements childComments = comment.getElementsByClass("child-comments"); 
+			if (!childComments.isEmpty()) {
+				for (int i = 0; i < childComments.size(); i++)
+					getComments(childComments.get(i),commentsMeta,commentId);
+			}
+			commentMeta.put("id", commentId);
+			Elements commenter = comment.getElementsByClass(IDEA_COMMENT_AUTHOR_NAME);
+			if (commenter.size() > 0) {
+				Element eAuthor = commenter.first().child(0);
+				commentMeta.put("author-name", eAuthor.text());
+				String authorId = eAuthor.attr(HREF_ATTR);
+				authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
+				authorId = authorId.split("-")[0];
+				commentMeta.put("author-id", authorId);
+			}
+			else {
+				commentMeta.put("author-name", "Unsuscribed User");
+				commentMeta.put("author-id", "-1");
+			}
+			Element date = comment.getElementsByAttributeValueMatching("class",IDEA_COMMENTS_DATE).first();
+			commentMeta.put("date", date.text());
+			Elements commentDesc = comment.getElementsByClass(IDEA_COMMENTS_DESCRIPTION);
+			String commentContent = "";
+			for (int i = 0; i < commentDesc.size(); i++) 
+				commentContent += commentDesc.get(i).text();
+			commentMeta.put("description", commentContent);
+			commentMeta.put("parent", parent);
+			commentsMeta.add(commentMeta);
+		}
+		
+		return commentsMeta;
 	}
 	
 	public ArrayList<HashMap<String,String>> getTabsURL(Document doc) throws Exception {

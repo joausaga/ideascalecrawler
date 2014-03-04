@@ -20,12 +20,14 @@ import org.jsoup.select.Elements;
 
 import web.CommunityInfoReader;
 import api.TweetSearch;
+import api.TweetUpdater;
 
 public class Crawler {
 	private static final Logger logger = Logger.getLogger(Crawler.class .getName()); 
 	private static CommunityInfoReader commInfoReader = null;
 	private static DBManager db = null;
 	private static TweetSearch ts = null;
+	private static TweetUpdater tu = null;
 	private static ArrayList<String> directory = null;
 	private static Scanner user_input = null;
 	private final static String IDEASCALE_BASE_URL = "https://ideascale.com/index/";
@@ -35,6 +37,7 @@ public class Crawler {
 		commInfoReader = new CommunityInfoReader();
 		db = new DBManager();
 		ts = new TweetSearch();
+		tu = new TweetUpdater();
 		directory = new ArrayList<String>(Arrays.asList("a","b","c",
 				  	"d","e","f","g","h","i","j","k","l","m","n","o",
 				  	"p","q","r","s","t","u","v","w","x","y","z"));
@@ -72,7 +75,11 @@ public class Crawler {
 			System.out.println("Usage TYPE [OPTION] [LETTERS] [SYNCMODE]");
 			System.out.println("TYPE: 'fg' or 'bg'");
 			System.out.println("If 'fg':");
-			System.out.println("- OPTION: 1 or 2 or 3");
+			System.out.println("- OPTION: 1, 2, 3 or 4");
+			System.out.println("- 1: For synchronizing the entire IdeaScale community directory");
+			System.out.println("- 2: For synchronizing only a sub-set of communities");
+			System.out.println("- 3: For synchronizing ideas, votes, comments and social sharing counters of active communities");
+			System.out.println("- 4: For updating recorded tweet's metrics");
 			System.out.println("If 'OPTION' = 2:");
 			System.out.println("- LETTERS: ");
 			System.out.println("- 'a,b,c' specify a group of communities directory letters by using comma-separeted values");
@@ -90,6 +97,7 @@ public class Crawler {
 		System.out.println("1 - for synchronizing the entire IdeaScale community directory");
 		System.out.println("2 - for synchronizing only a sub-set of communities");
 		System.out.println("3 - for synchronizing active communities");
+		System.out.println("4 - for updating recorded tweet's metrics");
 		
 		String option = user_input.next();
 		
@@ -117,6 +125,9 @@ public class Crawler {
 				Util.printMessage("Unknwon option " + option + ".","severe",logger);
 				System.exit(0);
 			}
+		}
+		else if(option.equals("4")) {
+			updateTweetsMetrics();
 		}
 		else {
 			Util.printMessage("Unknwon option " + option + ".","severe",logger);
@@ -146,6 +157,9 @@ public class Crawler {
 				else {
 					Util.printMessage("Invalid community directory letters","severe",logger);
 				}
+			}
+			else if (op == 4) {
+				updateTweetsMetrics();
 			}
 			else {
 				Util.printMessage("Unknwon background option: " + op,"severe",logger);
@@ -310,10 +324,10 @@ public class Crawler {
 				db.registerOperation(cal.getTime(), "Syncronization of communities: " + letter, opDuration);
 				
 				Util.printMessage("Syncronization of communities "+ letter +
-							 " has finished with a duration of: " + 
-							  duration.get("hours") + ":" + 
-							  duration.get("minutes")  + ":" + 
-				  		   	  duration.get("seconds"),"info",logger);
+							 	  " has finished with a duration of: " + 
+							 	  duration.get("hours") + ":" + 
+							 	  duration.get("minutes")  + ":" + 
+				  		   	  	  duration.get("seconds"),"info",logger);
 				
 				Util.printMessage("Found " + newCommunities.size() + " new communities.","info",logger);
 				for (int i = 0; i < newCommunities.size(); i++)
@@ -334,7 +348,7 @@ public class Crawler {
 	 * Synchronize the twitter counters and ideas of active communities
 	 * */
 	private static void syncActiveCommunitiesInfo(String opSync) {
-		long startingTime = System.currentTimeMillis();
+		long startingTime = 0;
 		ArrayList<HashMap<String, String>> activeCommunities;
 		DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 		Calendar cal = Calendar.getInstance();
@@ -350,8 +364,9 @@ public class Crawler {
 			System.out.println("");
 			Util.printMessage("Starting the synchronization of active communities...","info",logger);
 			for (HashMap<String,String> activeCommunity : activeCommunities) {
+				System.out.println("");
 				Util.printMessage("Synchronizing community: " + activeCommunity.get("name"),"info",logger);
-				
+				startingTime = System.currentTimeMillis();
 				String url = activeCommunity.get("url");
 				if (commInfoReader.checkHTTPSecureProtocol(url)) {
     				int colon = url.indexOf(":");
@@ -387,10 +402,8 @@ public class Crawler {
 				if (incrementers.size() > incrementersCounter)
 					opMsg += ". It had incremented its social network counters";
 				
-				db.updateSyncFlag(activeCommunity.get("id"));
-				
+				db.updateSyncFlag(activeCommunity.get("id"));				
 				db.registerOperation(today, opMsg, opDuration);	
-				Util.printMessage(opMsg,"info",logger);
 				
 				//Wait for a moment to avoid being banned
 				double rand = Math.random() * 5;		        			
@@ -427,6 +440,7 @@ public class Crawler {
 	{
 		HashMap<String,Object> communitySnStats = null;
 		String incrementer = "";
+		Integer idIdeaDB = -1;
 		
 		String url = community.get("url");
 		String communityId = community.get("id");
@@ -450,6 +464,32 @@ public class Crawler {
 					db.updateCommunityIdea(idea, ideaId);
 					if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
 						incrementer = "Idea: " + existingIdea.get("name");
+				}
+				if (existingIdea.isEmpty())
+					idIdeaDB = db.getIdeaId(ideaId);
+				else
+					idIdeaDB = Integer.parseInt(existingIdea.get("id"));
+				if (idIdeaDB != -1) {
+					//Save Comments
+					if ((Integer) idea.get("comments") > 0) {
+						ArrayList<HashMap<String,String>> commentsMeta = 
+						(ArrayList<HashMap<String, String>>) idea.get("comments-meta");
+						for (HashMap<String,String> comment : commentsMeta) {
+							Integer commentId = Integer.parseInt(comment.get("id"));
+							if (!db.commentAlreadyExisting(commentId, idIdeaDB))
+								db.insertComment(comment, idIdeaDB, today);
+						}
+					}
+					//Save Votes
+					if ((Integer) idea.get("score") > 0) {
+						ArrayList<HashMap<String,String>> votesMeta = 
+						(ArrayList<HashMap<String, String>>) idea.get("votes-meta");
+						for (HashMap<String,String> vote : votesMeta)
+							db.insertVote(vote, idIdeaDB, today);
+					}
+				}
+				else {
+					throw new Exception("Couldn't find in the DB the idea with the ID " + ideaId +" in IdeaScale.");
 				}
 			}
 		}
@@ -485,7 +525,14 @@ public class Crawler {
 		String idCommunity = community.get("id");
 		
 		ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url,timer);
-		if (tweets.size() > 0) db.insertCommunityTweets(tweets, idCommunity);
+		if (tweets.size() > 0) {
+			for (HashMap<String,Object> tweet : tweets) {
+				String idTweet = (String) tweet.get("id");
+				if (!db.tweetAlreadyInserted(idTweet))
+					//Saves only if the tweet wasn't saved previously
+					db.insertCommunityTweets(tweet, idCommunity);
+			}
+		}
 		//ts.GetTweets("http://toadfororacle.ideascale.com");
 	}
 	
@@ -498,7 +545,14 @@ public class Crawler {
 			String url = idea.get("url");
 			String idIdea = idea.get("id");
 			ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url,timer);
-			if (tweets.size() > 0) db.insertTweetsIdea(tweets, idIdea);	
+			if (tweets.size() > 0) {
+				for (HashMap<String,Object> tweet : tweets) {
+					String idTweet = (String) tweet.get("id");
+					if (!db.tweetAlreadyInserted(idTweet))
+						//Saves only if the tweet wasn't saved previously
+						db.insertTweetsIdea(tweet, idIdea);	
+				}
+			}
 		}
 	}
 	
@@ -520,6 +574,32 @@ public class Crawler {
 	    duration.put("seconds", sETS);
 	    
 	    return duration;
+	}
+	
+	public static void updateTweetsMetrics() {
+		try {
+			//Update metrics of tweets related to communities
+			ArrayList<HashMap<String,String>> tweets = db.getCommunitiesTweets();
+			for (HashMap<String,String> tweet : tweets) {
+				HashMap<String,Integer> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"), timer);
+				db.updateCommunityTweetMetric(tweet.get("id"), newMetrics);
+			}
+			//Update metrics of tweets related to ideas
+			tweets = db.getIdeasTweets();
+			for (HashMap<String,String> tweet : tweets) {
+				HashMap<String,Integer> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"), timer);
+				db.updateIdeaTweetMetric(tweet.get("id"), newMetrics);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			logger.log(Level.SEVERE,e.getMessage(),e);
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.log(Level.SEVERE,e.getMessage(),e);
+		} finally {
+			db.close();
+			timer.terminate();
+		}
 	}
 	
 	/*public static void checkCommunitiesExistence(CommunityInfoReader commInfoReader,

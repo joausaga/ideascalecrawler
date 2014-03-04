@@ -22,6 +22,8 @@ public class HTMLReader {
      * {@link StatusLine} HTTP status code when no server error has occurred.
      */
     private static final int HTTP_STATUS_OK = 200;
+    
+    private static final int HTTP_STATUS_NO_SERVICE = 503;
 	
     /**
      * Shared buffer used by {@link #getUrlContent(String)} when reading results
@@ -80,9 +82,16 @@ public class HTMLReader {
             
             // Check if server response is valid
             StatusLine status = response.getStatusLine();
-            if (status.getStatusCode() != HTTP_STATUS_OK) {
-                throw new Exception("Invalid response from server: " +
-                        		     status.toString());
+            while (status.getStatusCode() != HTTP_STATUS_OK) {
+            	if (status.getStatusCode() == HTTP_STATUS_NO_SERVICE) {
+            		Thread.sleep(10000); //Wait for 10 seconds and try again
+            		response = client.execute(request);
+            		status = response.getStatusLine();
+            	}
+            	else {
+            		throw new Exception("Invalid response from server: " +
+                        		     	 status.toString());
+            	}
             }
             
             // Pull content stream from response

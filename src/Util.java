@@ -32,7 +32,7 @@ public class Util {
 	}
 	
 	public static void printMessage(String msg, String level, Logger logger) {
-		System.out.println(msg);
+		//System.out.println(msg);
 		if (level == "info")
 			logger.info(msg);
 		else if (level == "warn")

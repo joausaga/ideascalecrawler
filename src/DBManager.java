@@ -390,36 +390,31 @@ public class DBManager {
 		return deletedRows;
 	}
 	
-	public void insertCommunityTweets(ArrayList<HashMap<String,Object>> tweets, 
-										String idCommunity) 
+	public void insertCommunityTweets(HashMap<String,Object> tweet, String idCommunity) 
 	throws SQLException, ParseException 
 	{	
 		preparedStatement = connection.prepareStatement("INSERT INTO tweets_communities " +
 														"(id_community, id_tweet, author, datetime, url," +
 														"replies, favorites, retweets, text) " +
 														"values (?, ?, ?, ? , ?, ?, ?, ?, ?)");
-		for (HashMap<String,Object> tweet : tweets) {				
-			//Saves only if the tweet wasn't save previously
-			if (!tweetAlreadyInserted((String) tweet.get("id"))) {   
-				preparedStatement.setString(1, (String) idCommunity);
-				preparedStatement.setString(2, (String) tweet.get("id"));
-				preparedStatement.setString(3, (String) tweet.get("author"));
-				Date dateUtil = (Date) tweet.get("datetime");
-				java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
-				preparedStatement.setTimestamp(4, ideaDateTime);
-				preparedStatement.setString(5, (String) tweet.get("url"));
-				preparedStatement.setInt(6, (Integer) tweet.get("replies"));
-				preparedStatement.setLong(7, (Long) tweet.get("favorites"));
-				preparedStatement.setLong(8, (Long) tweet.get("retweets"));
-				preparedStatement.setString(9, (String) tweet.get("text"));
-				preparedStatement.executeUpdate();
-			}
-		}
+		   
+		preparedStatement.setString(1, (String) idCommunity);
+		preparedStatement.setString(2, (String) tweet.get("id"));
+		preparedStatement.setString(3, (String) tweet.get("author"));
+		Date dateUtil = (Date) tweet.get("datetime");
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
+		preparedStatement.setTimestamp(4, ideaDateTime);
+		preparedStatement.setString(5, (String) tweet.get("url"));
+		preparedStatement.setInt(6, (Integer) tweet.get("replies"));
+		preparedStatement.setLong(7, (Long) tweet.get("favorites"));
+		preparedStatement.setLong(8, (Long) tweet.get("retweets"));
+		preparedStatement.setString(9, (String) tweet.get("text"));
+				
+		preparedStatement.executeUpdate();
 	    preparedStatement.close();
 	}
 	
-	public void insertTweetsIdea(ArrayList<HashMap<String,Object>> tweets, 
-								 String idIdea) 
+	public void insertTweetsIdea(HashMap<String,Object> tweet, String idIdea) 
 	throws SQLException, ParseException 
 	{	
 		preparedStatement = connection.prepareStatement("INSERT INTO tweets_ideas " +
@@ -427,34 +422,92 @@ public class DBManager {
 							"replies, favorites, retweets, text) " +
 							"values (?, ?, ?, ? , ?, ?, ?, ?, ?)");
 		
-		for (HashMap<String,Object> tweet : tweets) {
-			//Saves only if the tweet wasn't save previously
-			if (!tweetAlreadyInserted((String) tweet.get("id"))) {
-				preparedStatement.setString(1, (String) idIdea);
-				preparedStatement.setString(2, (String) tweet.get("id"));
-				preparedStatement.setString(3, (String) tweet.get("author"));
-				Date dateUtil = (Date) tweet.get("datetime");
-				java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
-				preparedStatement.setTimestamp(4, ideaDateTime);
-				preparedStatement.setString(5, (String) tweet.get("url"));
-				preparedStatement.setInt(6, (Integer) tweet.get("replies"));
-				preparedStatement.setLong(7, (Long) tweet.get("favorites"));
-				preparedStatement.setLong(8, (Long) tweet.get("retweets"));
-				preparedStatement.setString(9, (String) tweet.get("text"));
-				preparedStatement.executeUpdate();
-			}
-		}
+		preparedStatement.setString(1, (String) idIdea);
+		preparedStatement.setString(2, (String) tweet.get("id"));
+		preparedStatement.setString(3, (String) tweet.get("author"));
+		Date dateUtil = (Date) tweet.get("datetime");
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
+		preparedStatement.setTimestamp(4, ideaDateTime);
+		preparedStatement.setString(5, (String) tweet.get("url"));
+		preparedStatement.setInt(6, (Integer) tweet.get("replies"));
+		preparedStatement.setLong(7, (Long) tweet.get("favorites"));
+		preparedStatement.setLong(8, (Long) tweet.get("retweets"));
+		preparedStatement.setString(9, (String) tweet.get("text"));
 		
+		preparedStatement.executeUpdate();
 	    preparedStatement.close();
 	}
 	
-	private boolean tweetAlreadyInserted(String idTweet) throws SQLException {
+	public boolean tweetAlreadyInserted(String idTweet) throws SQLException {
+		Boolean existsTweet = false;
 		preparedStatement = connection.prepareStatement("SELECT * " +
 				  										"FROM tweets_communities " +
 				  										"WHERE id_tweet = ?");
 		preparedStatement.setString(1, (String) idTweet);
 		resultSet = preparedStatement.executeQuery();
-		return resultSet.first();
+		existsTweet = resultSet.first(); 
+		preparedStatement.close();
+		
+		return existsTweet;
+	}
+	
+	public boolean commentAlreadyExisting(Integer idComment, Integer idIdea) 
+	throws SQLException {
+		Boolean existsComment = false;
+		
+		preparedStatement = connection.prepareStatement("SELECT * " +
+				  										"FROM comments " +
+				  										"WHERE idea_id = ? " +
+				  										"AND ideascale_id = ?");
+		preparedStatement.setInt(1, idIdea);
+		preparedStatement.setInt(2, idComment);
+		resultSet = preparedStatement.executeQuery();
+		existsComment = resultSet.first();
+		preparedStatement.close();
+		
+		return existsComment; 
+	}
+	
+	public void insertComment(HashMap<String,String> comment, Integer idIdea, 
+							  Date storeDT) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("INSERT INTO comments " +
+														"(author_id, author_name, " +
+														"creation_datetime, description, " +
+														"ideascale_id, idea_id, " +
+														"store_datetime, parent_ideascale_id) " +
+														"values (?, ?, ?, ? , ?, ?, ?, ?)");
+		preparedStatement.setInt(1, Integer.parseInt(comment.get("author-id")));
+		preparedStatement.setString(2, comment.get("author-name"));
+		preparedStatement.setString(3, comment.get("date"));
+		preparedStatement.setString(4, comment.get("description"));
+		preparedStatement.setInt(5, Integer.parseInt(comment.get("id")));
+		preparedStatement.setInt(6, idIdea);
+		java.sql.Timestamp storeDateTime = new java.sql.Timestamp(storeDT.getTime());				
+		preparedStatement.setTimestamp(7, storeDateTime);
+		preparedStatement.setInt(8, Integer.parseInt(comment.get("parent")));
+		
+		preparedStatement.executeUpdate();
+	    preparedStatement.close();
+	}
+	
+	public void insertVote(HashMap<String,String> vote, Integer idIdea, Date storeDT) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("INSERT INTO votes " +
+														"(author_id, author_name, " +
+														"creation_datetime, value, " +
+														"idea_id, store_datetime) " +
+														"values (?, ?, ?, ? , ?, ?)");
+		preparedStatement.setInt(1, Integer.parseInt(vote.get("author-id")));
+		preparedStatement.setString(2, vote.get("author-name"));
+		preparedStatement.setString(3, vote.get("date"));
+		preparedStatement.setString(4, vote.get("value"));
+		preparedStatement.setInt(5, idIdea);
+		java.sql.Timestamp storeDateTime = new java.sql.Timestamp(storeDT.getTime());				
+		preparedStatement.setTimestamp(6, storeDateTime);
+		
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
 	}
 	
 	public ArrayList<HashMap<String,String>> getActiveCommunities() 
@@ -488,7 +541,8 @@ public class DBManager {
 			community.put("members", resultSet.getString("members"));
 			activeCommunities.add(community);
 		}
-				
+		preparedStatement.close();
+		
 		return activeCommunities;
 	}
 	
@@ -554,10 +608,10 @@ public class DBManager {
 
 		preparedStatement = connection.prepareStatement("INSERT INTO ideas " +
 				"(ideascale_id, title, description, " +
-				"creation_datetime, tags, author, " +
+				"creation_datetime, tags, author_name, " +
 				"community_id, twitter, facebook, url, score, comments, " +
-				"similar_to) " +
-				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"similar_to, author_id) " +
+				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, idIdea);
 		preparedStatement.setString(2, (String) idea.get("title"));
 		if (idea.get("description") != null)
@@ -590,17 +644,24 @@ public class DBManager {
 			preparedStatement.setNull(9, java.sql.Types.INTEGER);
 		preparedStatement.setString(10, (String) idea.get("url"));
 		if (idea.get("score") != null)
-			preparedStatement.setInt(11, Integer.parseInt((String) idea.get("score")));
+			preparedStatement.setInt(11, (Integer) idea.get("score"));
 		else
 			preparedStatement.setNull(11, java.sql.Types.INTEGER);
 		if (idea.get("comments") != null)
-			preparedStatement.setInt(12, Integer.parseInt((String) idea.get("comments")));
+			preparedStatement.setInt(12, (Integer) idea.get("comments"));
 		else
 			preparedStatement.setNull(12, java.sql.Types.INTEGER);
 		if (idea.get("similar") != null)
 			preparedStatement.setInt(13, (Integer) idea.get("similar"));
 		else
 			preparedStatement.setNull(13, java.sql.Types.INTEGER);
+		if (idea.get("author-id") == "")
+			System.out.println("Idea: "+idea.get("url"));
+		if (idea.get("author-id") != null)
+			preparedStatement.setInt(14, Integer.parseInt((String) idea.get("author-id")));
+		else
+			preparedStatement.setNull(14, java.sql.Types.INTEGER);
+		
 		preparedStatement.executeUpdate();
 		
 		preparedStatement.close();
@@ -622,11 +683,11 @@ public class DBManager {
 		else
 			preparedStatement.setNull(2, java.sql.Types.INTEGER);
 		if (idea.get("score") != null)
-			preparedStatement.setInt(3, Integer.parseInt((String) idea.get("score")));
+			preparedStatement.setInt(3, (Integer) idea.get("score"));
 		else
 			preparedStatement.setNull(3, java.sql.Types.INTEGER);
 		if (idea.get("comments") != null)
-			preparedStatement.setInt(4, Integer.parseInt((String) idea.get("comments")));
+			preparedStatement.setInt(4, (Integer) idea.get("comments"));
 		else
 			preparedStatement.setNull(4, java.sql.Types.INTEGER);
 		if (idea.get("similar") != null)
@@ -741,7 +802,7 @@ public class DBManager {
 		preparedStatement.setInt(12, Integer.parseInt(community.get("comments")));
 		preparedStatement.setInt(13, Integer.parseInt((String) newStats.get("comments")));
 		preparedStatement.setInt(14, Integer.parseInt(community.get("votes")));
-		preparedStatement.setInt(15, Integer.parseInt((String) newStats.get("score")));
+		preparedStatement.setInt(15, Integer.parseInt((String) newStats.get("votes")));
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -766,9 +827,9 @@ public class DBManager {
 		preparedStatement.setInt(6, Integer.parseInt(existingIdea.get("twitter")));
 		preparedStatement.setInt(7, Integer.parseInt((String) newIdea.get("twitter")));
 		preparedStatement.setInt(8, Integer.parseInt(existingIdea.get("comments")));
-		preparedStatement.setInt(9, Integer.parseInt((String) newIdea.get("comments")));
-		preparedStatement.setInt(10, Integer.parseInt(existingIdea.get("votes")));
-		preparedStatement.setInt(11, Integer.parseInt((String) newIdea.get("score")));
+		preparedStatement.setInt(9, (Integer) newIdea.get("comments"));
+		preparedStatement.setInt(10, Integer.parseInt(existingIdea.get("score")));
+		preparedStatement.setInt(11, (Integer) newIdea.get("score"));
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -787,6 +848,82 @@ public class DBManager {
 														"id = ?");
 		preparedStatement.setBoolean(1, true);
 		preparedStatement.setString(2, idCommunity);
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public Integer getIdeaId(Integer idIdeaScale) throws SQLException {
+		Integer idIdeaDB = -1;
+		preparedStatement = connection.prepareStatement("SELECT id " +
+														"FROM ideas " +
+														"WHERE ideascale_id = ?");
+		preparedStatement.setInt(1, idIdeaScale);
+		resultSet = preparedStatement.executeQuery();
+		if (resultSet.first()) 
+			idIdeaDB = resultSet.getInt("id");
+		
+		preparedStatement.close();
+		return idIdeaDB;
+	}
+	
+	public ArrayList<HashMap<String,String>> getIdeasTweets() throws SQLException {
+		ArrayList<HashMap<String,String>> tweets = new ArrayList<HashMap<String,String>>();
+		
+		preparedStatement = connection.prepareStatement("SELECT id, id_tweet " +
+														"FROM tweets_ideas");
+		resultSet = preparedStatement.executeQuery();
+		while (resultSet.next()) {
+			HashMap<String,String> tweet = new HashMap<String,String>();
+			tweet.put("id", resultSet.getString("id"));
+			tweet.put("id_tweet", resultSet.getString("id_tweet"));
+			tweets.add(tweet);
+		}
+		
+		preparedStatement.close();
+		return tweets;
+	}
+	
+	public void updateIdeaTweetMetric(String id, HashMap<String,Integer> newMetrics) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE tweets_ideas SET " +
+														"retweets = ?, favorites = ? " +
+														"replies = ? WHERE " +
+														"id = ?");
+		preparedStatement.setInt(1, newMetrics.get("retweets"));
+		preparedStatement.setInt(2, newMetrics.get("favorites"));
+		preparedStatement.setInt(3, newMetrics.get("replies"));
+		preparedStatement.setString(4, id);
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public ArrayList<HashMap<String,String>> getCommunitiesTweets() throws SQLException {
+		ArrayList<HashMap<String,String>> tweets = new ArrayList<HashMap<String,String>>();
+		
+		preparedStatement = connection.prepareStatement("SELECT id, id_tweet " +
+														"FROM tweets_communities");
+		resultSet = preparedStatement.executeQuery();
+		while (resultSet.next()) {
+			HashMap<String,String> tweet = new HashMap<String,String>();
+			tweet.put("id", resultSet.getString("id"));
+			tweet.put("id_tweet", resultSet.getString("id_tweet"));
+			tweets.add(tweet);
+		}
+		
+		preparedStatement.close();
+		return tweets;
+	}
+	
+	public void updateCommunityTweetMetric(String id, HashMap<String,Integer> newMetrics) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE tweets_communities SET " +
+														"retweets = ?, favorites = ? " +
+														"replies = ? WHERE " +
+														"id = ?");
+		preparedStatement.setInt(1, newMetrics.get("retweets"));
+		preparedStatement.setInt(2, newMetrics.get("favorites"));
+		preparedStatement.setInt(3, newMetrics.get("replies"));
+		preparedStatement.setString(4, id);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
