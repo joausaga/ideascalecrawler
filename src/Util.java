@@ -8,7 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Util {
-	public static final Logger logger = Logger.getLogger(Crawler.class .getName());
+	public static final Logger logger = Logger.getLogger(Util.class .getName());
 	
 	public static URI toURI(String url) {
 		String urlStr = url;
