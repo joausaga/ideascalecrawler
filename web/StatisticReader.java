@@ -222,7 +222,10 @@ public class StatisticReader extends HTMLReader {
 					String authorId = eAuthor.attr(HREF_ATTR);
 					authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
 					authorId = authorId.split("-")[0];
-					voteMeta.put("author-id", authorId);
+					if (isNumeric(authorId))
+						voteMeta.put("author-id", authorId);
+					else
+						voteMeta.put("author-id", "-1");
 				}
 				else {
 					voteMeta.put("author-name", "Unsuscribed User");
@@ -275,7 +278,10 @@ public class StatisticReader extends HTMLReader {
 				String authorId = eAuthor.attr(HREF_ATTR);
 				authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
 				authorId = authorId.split("-")[0];
-				commentMeta.put("author-id", authorId);
+				if (isNumeric(authorId))
+					commentMeta.put("author-id", authorId);
+				else
+					commentMeta.put("author-id", "-1");
 			}
 			else {
 				commentMeta.put("author-name", "Unsuscribed User");
