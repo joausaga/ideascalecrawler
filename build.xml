@@ -30,8 +30,10 @@
 
   <!-- Compiles the java code -->
   <target name="compile" depends="clean, makedir">
-    <javac srcdir="${src.dir}:${src_web.dir}:${src_api.dir}" 
-    	   destdir="${build.dir}" classpathref="build.classpath">
+    <javac destdir="${build.dir}" classpathref="build.classpath">
+    	<src path="${src.dir}"/>
+    	<src path="${src_web.dir}"/>
+    	<src path="${src_api.dir}"/>
     </javac>
   </target>
 
