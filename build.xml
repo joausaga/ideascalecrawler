@@ -3,6 +3,8 @@
   <!-- Sets variables which can later be used. -->
   <!-- The value of a property is accessed via ${} -->
   <property name="src.dir" location="src" />
+  <property name="src_web.dir" location="web" />
+  <property name="src_api.dir" location="api" />
   <property name="build.dir" location="bin" />
   <property name="dist.dir" location="dist" />
   <property name="lib.dir" location="lib" />
@@ -28,7 +30,8 @@
 
   <!-- Compiles the java code -->
   <target name="compile" depends="clean, makedir">
-    <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="build.classpath">
+    <javac srcdir="${src.dir}:${src_web.dir}:${src_api.dir}" 
+    	   destdir="${build.dir}" classpathref="build.classpath">
     </javac>
   </target>
 
