@@ -1,7 +1,6 @@
 package web;
 
-import java.net.URI;
-import java.net.URL;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +24,7 @@ public class StatisticReader extends HTMLReader {
 	private final static String IDEAS_IN_PROGRESS = "tab-progress";
 	private final static String IDEAS_COMPLETED = "tab-complete";
 	private final static String FRAME_TAG = "iframe";
-	private final static String FACEBOOK_STATS = "u_0_2";
+	private final static String FACEBOOK_STATS = "u_0_1";
 	private final static String TWITTER_URL_P = "https://cdn.api.twitter.com/1/urls/count.json?url=";
 	private final static String TWITTER_URL_S = "&callback=twttr.receiveCount";
 	private final static String LOGO = "logo";
@@ -70,37 +69,64 @@ public class StatisticReader extends HTMLReader {
 			
 			Element ideasStats = doc.getElementById(IDEAS_STATS);
 			if (ideasStats != null) {
-				textElement = ideasStats.child(0).text();
-			    statistics.put("ideas", replaceThounsandSymbol(textElement));
+				textElement = replaceThounsandSymbol(ideasStats.child(0).text());
+				if (isNumeric(textElement))
+					statistics.put("ideas", textElement);
+				else
+					throw new Exception("The ideas counter is not numeric. Community: " + url);
 			}
 	        	
 			Element otherStats = doc.getElementById(OTHER_STATS);
 			if (otherStats != null) {
 				Elements childrenStats = otherStats.children();
-			    statistics.put("comments", replaceThounsandSymbol(childrenStats.get(0).text()));
-			    statistics.put("votes",replaceThounsandSymbol(childrenStats.get(1).text()));
-			    statistics.put("members", replaceThounsandSymbol(childrenStats.get(2).text()));
+				textElement = replaceThounsandSymbol(childrenStats.get(0).text());
+				if (isNumeric(textElement))
+					statistics.put("comments", textElement);
+				else
+					throw new Exception("The comments counter is not numeric. Community: " + url);
+				textElement = replaceThounsandSymbol(childrenStats.get(1).text());
+				if (isNumeric(textElement))
+					statistics.put("votes",textElement);
+				else
+					throw new Exception("The votes counter is not numeric. Community: " + url);
+				textElement = replaceThounsandSymbol(childrenStats.get(2).text());
+				if (isNumeric(textElement))
+					statistics.put("members", textElement);
+				else
+					throw new Exception("The members counter is not numeric. Community: " + url);
 			}
 			
 			Element ideasInReview = doc.getElementById(IDEAS_IN_REVIEW);
 			if (ideasInReview != null) {
 				textElement = ideasInReview.child(0).text();
 				textElement = textElement.replaceAll("[^0-9]+", " ");
-				statistics.put("ideas_in_review",textElement.trim());
+				textElement = textElement.trim();
+				if (isNumeric(textElement))
+					statistics.put("ideas_in_review",textElement);
+				else
+					throw new Exception("The ideas in review counter is not numeric. Community: " + url);
 			}
 			
 			Element ideasInProgress = doc.getElementById(IDEAS_IN_PROGRESS);
 			if (ideasInProgress != null) {
 				textElement = ideasInProgress.child(0).text();
 				textElement = textElement.replaceAll("[^0-9]+", " ");
-				statistics.put("ideas_in_progress",textElement.trim());
+				textElement = textElement.trim();
+				if (isNumeric(textElement))
+					statistics.put("ideas_in_progress",textElement);
+				else
+					throw new Exception("The ideas in progress counter is not numeric. Community: " + url);
 			}
 			
 			Element ideasCompleted = doc.getElementById(IDEAS_COMPLETED);
 			if (ideasCompleted != null) {
 				textElement = ideasCompleted.child(0).text();
 				textElement = textElement.replaceAll("[^0-9]+", " ");
-				statistics.put("ideas_completed",textElement.trim());
+				textElement = textElement.trim();
+				if (isNumeric(textElement))
+					statistics.put("ideas_completed",textElement);
+				else
+					throw new Exception("The ideas completed counter is not numeric. Community: " + url);
 			}
 			
 			/*Element logo = doc.getElementById(LOGO);
@@ -132,7 +158,7 @@ public class StatisticReader extends HTMLReader {
 	throws Exception {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
-		String fullURL = communityURL+ideaURLEncoded;
+		String fullURL = communityURL+ideaURLEncoded; //"http://projectfortnight.ideascale.com/a/dtd/Chorus/38327-26872";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -151,7 +177,7 @@ public class StatisticReader extends HTMLReader {
 		statistics.put("description", ideaDescription);
 		//Tags
 		Elements tags = doc.getElementsByAttributeValueMatching(HREF_ATTR, IDEA_HREF_TAGS);
-		if (tags != null) {
+		if (!tags.isEmpty()) {
 			String ideaTags = "";
 			int numTags = tags.size();
 			for (int i = 0; i < numTags; i++) {
@@ -166,7 +192,7 @@ public class StatisticReader extends HTMLReader {
 			statistics.put("tags", null);
 		}
 		//Social Networks
-		HashMap<String,Object> auxStats = getSNCounters(doc,fullURL);
+		HashMap<String,Object> auxStats = getIdeaSNCounters(doc,fullURL);
 		statistics.put("facebook", auxStats.get("facebook"));
 		statistics.put("twitter",auxStats.get("twitter"));
 		
@@ -190,7 +216,7 @@ public class StatisticReader extends HTMLReader {
 			for (Element vote : scoreElem.children()) {
 				HashMap<String,String> voteMeta = new HashMap<String,String>();
 				Elements voter = vote.getElementsByClass("voter");
-				if (voter.size() > 1) {
+				if (voter.first().children().size() > 1) {
 					Element eAuthor = voter.first().child(1);
 					voteMeta.put("author-name", eAuthor.text());
 					String authorId = eAuthor.attr(HREF_ATTR);
@@ -243,7 +269,7 @@ public class StatisticReader extends HTMLReader {
 			}
 			commentMeta.put("id", commentId);
 			Elements commenter = comment.getElementsByClass(IDEA_COMMENT_AUTHOR_NAME);
-			if (commenter.size() > 0) {
+			if (commenter.first().children().size() > 0) {
 				Element eAuthor = commenter.first().child(0);
 				commentMeta.put("author-name", eAuthor.text());
 				String authorId = eAuthor.attr(HREF_ATTR);
@@ -302,34 +328,105 @@ public class StatisticReader extends HTMLReader {
     	HashMap<String,Object> snCounters = new HashMap<String,Object>();
 		snCounters.put("facebook", null);
 		snCounters.put("twitter", null);
-    	
+    	Document docSN;
+		
 		Elements frameTag = doc.getElementsByTag(FRAME_TAG);
 		if (!frameTag.isEmpty()) {
-			Element facebookTag = frameTag.first();   //Should be the Facebook one
-			String content = getUrlContent(Util.toURI(facebookTag.attr("src")));
-			doc = Jsoup.parse(content);
-			Element facebookStats = doc.getElementById(FACEBOOK_STATS);
+			Element facebookTag = frameTag.first();   //Should be the Facebook one. WARNING.
+			String urlSN = facebookTag.attr("src");
+			String content = getUrlContent(Util.toURI(urlSN));
+			docSN = Jsoup.parse(content);
+			Element facebookStats = docSN.getElementById(FACEBOOK_STATS);
 			if (facebookStats != null) {
-				String shared = facebookStats.child(0).text();
+				String shared = facebookStats.text();
 				shared = shared.replaceAll("[^0-9]+", " ");
 				shared = shared.trim();
 				if (shared.isEmpty())
 					snCounters.put("facebook","0");						
-				else
-					snCounters.put("facebook",shared);
+				else {
+					if (isNumeric(shared))
+						snCounters.put("facebook",shared);
+					else
+						throw new Exception("The facebook counter is not numeric. Community: " + url);
+				}
 			}
 			
 			//Get Twitter counter
 			String twURL = TWITTER_URL_P + URLEncoder.encode(url, "utf-8") + 
 				    	   TWITTER_URL_S;
-			content = getUrlContent(Util.toURI(twURL));
-			doc = Jsoup.parse(content);
-			String textElement = doc.getElementsByTag("body").text();
+			content = getUrlContent(twURL);
+			docSN = Jsoup.parse(content);
+			String textElement = docSN.getElementsByTag("body").text();
 			char twCounter = textElement.charAt(textElement.indexOf(":") + 1);
-			snCounters.put("twitter", Character.toString(twCounter));
+			if (isNumeric(Character.toString(twCounter)))
+				snCounters.put("twitter", Character.toString(twCounter));
+			else
+				throw new Exception("The twitter counter is not numeric. Community: " + url);
 		}
 		
     	return snCounters;
 	}
     
+    public HashMap<String,Object> getIdeaSNCounters(Document doc, String url) 
+    throws Exception  
+	{
+    	HashMap<String,Object> snCounters = new HashMap<String,Object>();
+		snCounters.put("facebook", null);
+		snCounters.put("twitter", null);
+		Document docSN;
+    	
+		String content, urlSN;
+		
+		Elements facebook = doc.getElementsByAttributeValue("class", "like");
+		if (!facebook.isEmpty()) {
+			Elements facebookTag = facebook.first().getElementsByTag(FRAME_TAG);
+			urlSN = facebookTag.first().attr("src");
+			urlSN = URLDecoder.decode(urlSN, "UTF-8");
+			content = getUrlContent(Util.toURI(urlSN));
+			docSN = Jsoup.parse(content);
+			Elements facebookStats = docSN.getElementsByClass("pluginCountTextDisconnected");
+			if (!facebookStats.isEmpty()) {
+				String shared = facebookStats.first().text();
+				shared = shared.replaceAll("[^0-9]+", " ");
+				shared = shared.trim();
+				if (shared.isEmpty())
+					snCounters.put("facebook","0");						
+				else {
+					if (isNumeric(shared))
+						snCounters.put("facebook",shared);
+					else
+						throw new Exception("The facebook counter is not numeric. Idea: " + url);
+				}
+			}
+			else {
+				Util.printMessage("Couldn't get the facebook counter of the idea: " + url, "severe", logger);
+			}
+		}
+		
+		//Get Twitter counter
+		String twURL = TWITTER_URL_P + URLEncoder.encode(url, "utf-8") + 
+			    	   TWITTER_URL_S;
+		content = getUrlContent(twURL);
+		docSN = Jsoup.parse(content);
+		String textElement = docSN.getElementsByTag("body").text();
+		char twCounter = textElement.charAt(textElement.indexOf(":") + 1);
+		
+		if (isNumeric(Character.toString(twCounter)))
+			snCounters.put("twitter", Character.toString(twCounter));
+		else
+			throw new Exception("The twitter counter is not numeric. Idea: " + url);
+		
+    	return snCounters;
+	}
+    
+    private boolean isNumeric(String num)
+    {
+    	try {
+    		Integer.parseInt(num);
+    	}
+    	catch(NumberFormatException e) {
+    		return false;
+    	}
+    	return true;
+    }
 }

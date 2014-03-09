@@ -503,17 +503,30 @@ public class Crawler {
 													String type) 
 	throws SQLException {
 		boolean foundIncrementer = false;
-		Integer currentFBCounter = Integer.parseInt((String) current.get("facebook"));
-		Integer currentTWCounter = Integer.parseInt((String) current.get("twitter"));
-		Integer oldFBCounter = Integer.parseInt((String) old.get("facebook"));
-		Integer oldTWCounter = Integer.parseInt((String) old.get("twitter"));
-		//Log increment in social network counters
-		if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
-			foundIncrementer = true;
+		
+		if (current.get("facebook") != null && current.get("twitter") != null &&
+			old.get("facebook") != null && old.get("twitter") != null) 
+		{
+			Integer currentFBCounter = Integer.parseInt((String) current.get("facebook"));
+			Integer currentTWCounter = Integer.parseInt((String) current.get("twitter"));
+			Integer oldFBCounter = Integer.parseInt((String) old.get("facebook"));
+			Integer oldTWCounter = Integer.parseInt((String) old.get("twitter"));
+			//Log increment in social network counters
+			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
+				foundIncrementer = true;
+				if (type == "idea")
+					db.saveLogIdea(today, old, current);
+				else
+					db.saveLogCommunity(today, old, current);
+			}
+		}
+		else {
 			if (type == "idea")
-				db.saveLogIdea(today, old, current);
+				Util.printMessage("Some of the SN counters of the idea: " + 
+								   old.get("name") + " are null", "info", logger);
 			else
-				db.saveLogCommunity(today, old, current);
+				Util.printMessage("Some of the SN counters of the community " + 
+						   		   old.get("name") + " are null", "info", logger);
 		}
 		
 		return foundIncrementer;

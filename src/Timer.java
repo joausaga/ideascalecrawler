@@ -7,6 +7,7 @@ import api.TweetSearch;
 
 public class Timer extends Thread {
 	public static final Logger logger = Logger.getLogger(Timer.class .getName()); 
+	private final Integer TIME_WINDOW = 15; //For the Twitter API the time window is 15 minutes
 	private boolean running = true;
 	private long startTime;
 	private long endTime;
@@ -19,13 +20,16 @@ public class Timer extends Thread {
 	}
 	
 	public void run() {
-		startTime = System.currentTimeMillis();
+		startTime = 0;
+		endTime = 0;
 		
 		while (running) {
 			try {
 				Thread.sleep(1000);
-				endTime = System.currentTimeMillis();
-				elapsedTime = (endTime - startTime) / (60 * 1000) % 60;
+				endTime += 1;
+				elapsedTime = (endTime - startTime) % 60;
+				if (elapsedTime >= TIME_WINDOW)
+					reset();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 				logger.log(Level.SEVERE,e.getMessage(),e);
@@ -33,8 +37,13 @@ public class Timer extends Thread {
 		}
 	}
 	
-	public void setStartingTime() { 
-		startTime = System.currentTimeMillis();
+	public void reset() { 
+		startTime = 0;
+		endTime = 0;
+	}
+	
+	public String toString() {
+		return "Start Counter: " + startTime + " End Counter: " + endTime;
 	}
 	
 	public void terminate() {

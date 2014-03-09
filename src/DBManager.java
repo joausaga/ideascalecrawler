@@ -15,7 +15,6 @@ import java.util.HashMap;
 
 public class DBManager {
 	private Connection connection = null;
-	private Statement statement = null;
 	private PreparedStatement preparedStatement = null;
 	private ResultSet resultSet = null;
 	private final static String DBNAME = "ideascale";
@@ -31,7 +30,6 @@ public class DBManager {
 										 "&password=" + DBPASS;
 			// Setup the connection with the DB
 		    connection = DriverManager.getConnection(connectionStatement);
-		    statement = connection.createStatement();
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} catch (SQLException e) {
@@ -95,6 +93,13 @@ public class DBManager {
 			}
 		} catch(SQLException e) {
 			e.printStackTrace();
+		} finally {
+			try {
+				resultSet.close();
+				preparedStatement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
 		}
 		return communitiesURL;
 	}
@@ -163,12 +168,6 @@ public class DBManager {
 	
 	public void close() {
 		try {
-			if (resultSet != null) {
-				resultSet.close();
-			}
-			if (statement != null) {
-				statement.close();
-			}
 			if (connection != null) {
 				connection.close();
 			}
@@ -363,7 +362,10 @@ public class DBManager {
 		
 		if (resultSet.first())
 			idCommunity = resultSet.getString("id");
-			
+		
+		preparedStatement.close();
+		resultSet.close();
+		
 		return idCommunity;		
 	}
 	
@@ -374,8 +376,6 @@ public class DBManager {
 			preparedStatement = connection.prepareStatement("DELETE FROM communities " +
 															"WHERE updated = ?");
 			preparedStatement.setBoolean(1, false);
-			deletedRows = preparedStatement.executeUpdate();
-			preparedStatement.close();
 		}
 		else {
 			preparedStatement = connection.prepareStatement("DELETE FROM communities " +
@@ -383,10 +383,10 @@ public class DBManager {
 																"name LIKE ?");
 			preparedStatement.setBoolean(1, false);
 			preparedStatement.setString(2, letter+"%");
-			deletedRows = preparedStatement.executeUpdate();
-			preparedStatement.close();
 		}
 		
+		deletedRows = preparedStatement.executeUpdate();
+		preparedStatement.close();
 		return deletedRows;
 	}
 	
@@ -445,7 +445,9 @@ public class DBManager {
 				  										"WHERE id_tweet = ?");
 		preparedStatement.setString(1, (String) idTweet);
 		resultSet = preparedStatement.executeQuery();
-		existsTweet = resultSet.first(); 
+		existsTweet = resultSet.first();
+		
+		resultSet.close();
 		preparedStatement.close();
 		
 		return existsTweet;
@@ -463,6 +465,8 @@ public class DBManager {
 		preparedStatement.setInt(2, idComment);
 		resultSet = preparedStatement.executeQuery();
 		existsComment = resultSet.first();
+		
+		resultSet.close();
 		preparedStatement.close();
 		
 		return existsComment; 
@@ -541,6 +545,8 @@ public class DBManager {
 			community.put("members", resultSet.getString("members"));
 			activeCommunities.add(community);
 		}
+		
+		resultSet.close();
 		preparedStatement.close();
 		
 		return activeCommunities;
@@ -609,9 +615,9 @@ public class DBManager {
 		preparedStatement = connection.prepareStatement("INSERT INTO ideas " +
 				"(ideascale_id, title, description, " +
 				"creation_datetime, tags, author_name, " +
-				"community_id, twitter, facebook, url, score, comments, " +
-				"similar_to, author_id) " +
-				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"community_id, twitter, facebook, url, votes, comments, " +
+				"similar_to, author_id, status) " +
+				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, idIdea);
 		preparedStatement.setString(2, (String) idea.get("title"));
 		if (idea.get("description") != null)
@@ -629,8 +635,8 @@ public class DBManager {
 			preparedStatement.setString(5, (String) idea.get("tags"));
 		else
 			preparedStatement.setNull(5, java.sql.Types.NULL);
-		if (idea.get("author") != null)
-			preparedStatement.setString(6, (String) idea.get("author"));
+		if (idea.get("author-name") != null)
+			preparedStatement.setString(6, (String) idea.get("author-name"));
 		else
 			preparedStatement.setNull(6, java.sql.Types.NULL);
 		preparedStatement.setString(7, (String) communityId);
@@ -662,6 +668,11 @@ public class DBManager {
 		else
 			preparedStatement.setNull(14, java.sql.Types.INTEGER);
 		
+		if (idea.get("status") != null)
+			preparedStatement.setString(15, (String) idea.get("status"));
+		else
+			preparedStatement.setNull(15, java.sql.Types.NULL);
+		
 		preparedStatement.executeUpdate();
 		
 		preparedStatement.close();
@@ -671,8 +682,8 @@ public class DBManager {
 	throws SQLException {
 		preparedStatement = connection.prepareStatement(
 				"UPDATE ideas SET " +
-				"twitter = ?, facebook = ?, score = ?, " +
-				"comments = ?, similar_to = ? " +
+				"twitter = ?, facebook = ?, votes = ?, " +
+				"comments = ?, similar_to = ?, status = ?, author_name = ? " +
 				"WHERE id = ?");
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
@@ -694,7 +705,15 @@ public class DBManager {
 			preparedStatement.setInt(5, (Integer) idea.get("similar"));
 		else
 			preparedStatement.setNull(5, java.sql.Types.INTEGER);
-		preparedStatement.setInt(6, idIdea);
+		if (idea.get("status") != null)
+			preparedStatement.setString(6, (String) idea.get("status"));
+		else
+			preparedStatement.setNull(6, java.sql.Types.NULL);
+		if (idea.get("author-name") != null)
+			preparedStatement.setString(7, (String) idea.get("author-name"));
+		else
+			preparedStatement.setNull(7, java.sql.Types.NULL);
+		preparedStatement.setInt(8, idIdea);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -712,9 +731,13 @@ public class DBManager {
 			existingIdea.put("name", resultSet.getString("title"));
 			existingIdea.put("facebook", resultSet.getString("facebook"));
 			existingIdea.put("twitter", resultSet.getString("twitter"));
-			existingIdea.put("score", resultSet.getString("score"));
+			existingIdea.put("score", resultSet.getString("votes"));
 			existingIdea.put("comments", resultSet.getString("comments"));
 		}
+		
+		resultSet.close();
+		preparedStatement.close();
+		
 		return existingIdea;
 	}
 	
@@ -736,6 +759,9 @@ public class DBManager {
 			idea.put("twitter", resultSet.getString("twitter"));
 			ideas.add(idea);
 		}
+		
+		preparedStatement.close();
+		resultSet.close();
 		
 		return ideas;
 	}
@@ -759,8 +785,6 @@ public class DBManager {
 			preparedStatement = connection.prepareStatement("UPDATE communities SET " +
 															"updated = ?");
 			preparedStatement.setBoolean(1, false);
-			preparedStatement.executeUpdate();
-			preparedStatement.close();
 		}
 		else {
 			preparedStatement = connection.prepareStatement("UPDATE communities SET " +
@@ -768,9 +792,9 @@ public class DBManager {
 															"WHERE name LIKE ?");
 			preparedStatement.setBoolean(1, false);
 			preparedStatement.setString(2, letter+"%");
-			preparedStatement.executeUpdate();
-			preparedStatement.close();
 		}
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
 	}
 	
 	public void saveLogCommunity(Date currentDate,
@@ -784,7 +808,7 @@ public class DBManager {
 														"old_members, new_members," +
 														"old_ideas, new_ideas," +
 														"old_comments, new_comments," +
-														"old_score, new_score) " +
+														"old_votes, new_votes) " +
 														"values (?, ?, ?, ?, ?, ?, " +
 														"?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		java.sql.Date date = new java.sql.Date(currentDate.getTime());
@@ -815,7 +839,7 @@ public class DBManager {
 														"old_facebook, new_facebook," +
 														"old_twitter, new_twitter," +
 														"old_comments, new_comments," +
-														"old_score, new_score) " +
+														"old_votes, new_votes) " +
 														"values (?, ?, ?, ?, ?, ?, " +
 														"?, ?, ?, ?, ?)");
 		java.sql.Date date = new java.sql.Date(currentDate.getTime());
@@ -863,6 +887,7 @@ public class DBManager {
 			idIdeaDB = resultSet.getInt("id");
 		
 		preparedStatement.close();
+		resultSet.close();
 		return idIdeaDB;
 	}
 	
@@ -880,6 +905,7 @@ public class DBManager {
 		}
 		
 		preparedStatement.close();
+		resultSet.close();
 		return tweets;
 	}
 	
@@ -911,6 +937,8 @@ public class DBManager {
 		}
 		
 		preparedStatement.close();
+		resultSet.close();
+		
 		return tweets;
 	}
 	

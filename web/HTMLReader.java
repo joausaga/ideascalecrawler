@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.logging.Logger;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -14,10 +15,15 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClients;
 
+import src.Util;
+
+import api.TweetSearch;
+
 import com.sun.tools.javac.util.Context;
 
 public class HTMLReader {
-
+	private final static Logger logger = Logger.getLogger(HTMLReader.class.getName());
+	
 	/**
      * {@link StatusLine} HTTP status code when no server error has occurred.
      */
@@ -70,7 +76,6 @@ public class HTMLReader {
 				.setCookieSpec(CookieSpecs.NETSCAPE)
 				.build();*/
         
-        HttpClient client = HttpClients.createDefault();
         HttpGet request = new HttpGet(url);
         request.setHeader("User-Agent", sUserAgent);
 
@@ -78,20 +83,17 @@ public class HTMLReader {
 
         try {
         	
-            HttpResponse response = client.execute(request);
+            HttpResponse response = doRequest(request);
             
             // Check if server response is valid
             StatusLine status = response.getStatusLine();
             while (status.getStatusCode() != HTTP_STATUS_OK) {
-            	if (status.getStatusCode() == HTTP_STATUS_NO_SERVICE) {
-            		Thread.sleep(10000); //Wait for 10 seconds and try again
-            		response = client.execute(request);
-            		status = response.getStatusLine();
-            	}
-            	else {
-            		throw new Exception("Invalid response from server: " +
-                        		     	 status.toString());
-            	}
+            	Util.printMessage("Invalid response from server: " +
+		     	 			  	  status.toString() + 
+		     	 			  	  ". Trying again", "info", logger);
+            	Thread.sleep(10000); //Wait for 10 seconds and try again
+            	response = doRequest(request);
+            	status = response.getStatusLine();
             }
             
             // Pull content stream from response
@@ -113,6 +115,64 @@ public class HTMLReader {
         }
     }
 	
+    public synchronized String getUrlContent(String url) 
+	throws Exception 
+	{
+		if (sUserAgent == null)
+			throw new Exception("User-Agent string must be prepared");
+		
+		// Create client and set our specific user-agent string
+		/*RequestConfig globalConfig = RequestConfig.custom()
+				.setCookieSpec(CookieSpecs.NETSCAPE)
+				.build();*/
+		
+		HttpGet request = new HttpGet(url);
+		request.setHeader("User-Agent", sUserAgent);
+		
+		//request.setConfig(globalConfig);
+		
+		try {
+			
+		    HttpResponse response = doRequest(request);
+		    
+		    // Check if server response is valid
+			StatusLine status = response.getStatusLine();
+			while (status.getStatusCode() != HTTP_STATUS_OK) {
+				Util.printMessage("Invalid response from server: " +
+       		     	 			  status.toString() + 
+       		     	 			  ". Trying again", "info", logger);
+				Thread.sleep(10000); //Wait for 10 seconds and try again
+				response = doRequest(request);
+				status = response.getStatusLine();
+			}
+		
+			// Pull content stream from response
+			HttpEntity entity = response.getEntity();
+			InputStream inputStream = entity.getContent();
+			
+			ByteArrayOutputStream content = new ByteArrayOutputStream();
+			
+			// Read response into a buffered stream
+			int readBytes = 0;
+			while ((readBytes = inputStream.read(sBuffer)) != -1) {
+			    content.write(sBuffer, 0, readBytes);
+			}
+		
+			// Return result from buffered stream
+			    return new String(content.toByteArray());
+		} catch (IOException e) {
+		    throw new Exception("Communication problems", e);
+		}
+	}
+    
+    private HttpResponse doRequest(HttpGet request) 
+    throws ClientProtocolException, IOException {
+    	HttpClient client = HttpClients.createDefault();
+    	HttpResponse response = client.execute(request);
+    	return response;
+    }
+    
+    
     public boolean checkHTTPSecureProtocol(String url) {
     	HttpClient client = HttpClients.createDefault();
     	RequestConfig requestConfig = RequestConfig.custom().

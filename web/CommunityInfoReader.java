@@ -51,6 +51,7 @@ public class CommunityInfoReader extends HTMLReader {
 		Integer ideasProcessed = 0;
 		Document doc;
 		ArrayList<HashMap<String,Object>> info = new ArrayList<HashMap<String,Object>>();
+		boolean lastPage;
 		
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		
@@ -70,11 +71,13 @@ public class CommunityInfoReader extends HTMLReader {
 			String page = getUrlContent(Util.toURI(currentPage));
 			Integer tabIdeas = Integer.parseInt(tab.get("ideas"));
 			ideasProcessed = 0;
+			lastPage = false;
 			
 			Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
 			
 			doc = Jsoup.parse(page);
-			while (ideasProcessed < tabIdeas || !emptyList(doc)) {
+			//while (ideasProcessed < tabIdeas || !emptyList(doc)) {
+			while (!lastPage) {
 				Element ideasList = doc.getElementById("ideas");
 				for (Element ideaList : ideasList.children()) {
 					ideasProcessed += 1;
@@ -113,6 +116,14 @@ public class CommunityInfoReader extends HTMLReader {
 								else {
 									ideaStats.put("datetime", null);
 								}
+								Element statusElement = ideaList.getElementById("idea-"+ideaId+"-status");
+								if (statusElement != null) {
+									String statusStr = statusElement.attr("class");
+									ideaStats.put("status", statusStr.split(" ")[1]);
+								}
+								else {
+									ideaStats.put("status", null);
+								}
 								info.add(ideaStats);
 							}
 							else {
@@ -124,11 +135,14 @@ public class CommunityInfoReader extends HTMLReader {
 						}
 					}
 				}
-				pageNum += 1;
-				currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
-				Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
-				page = getUrlContent(Util.toURI(currentPage));
-				doc = Jsoup.parse(page);
+				lastPage = isLastPage(doc);
+				if (!lastPage) {
+					pageNum += 1;
+					currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
+					Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
+					page = getUrlContent(Util.toURI(currentPage));
+					doc = Jsoup.parse(page);
+				}
 			}
 			
 			//Wait for a moment to avoid being banned
@@ -329,6 +343,36 @@ public class CommunityInfoReader extends HTMLReader {
 			return true;
 		else
 			return false;
+	}
+	
+	private boolean isLastPage(Document doc) {
+		Elements pag = doc.getElementsByClass("pagination");
+		
+		//If the pagination elements doesn't exist we are in the last page
+		if (pag.isEmpty()) {  
+			return true;
+		}
+		else {
+			int numElements = pag.first().children().size();
+			Element lastPag = pag.first().children().get(numElements-1);
+			
+			//If the last pagination element doesn't have child we are in the
+			//last page
+			if (lastPag.children().size() > 0) {
+				lastPag = lastPag.child(0);
+				//The 'next' button is identified by the absent of the attribute 'title'
+				//and by the presence of the attribute 'href'
+				//So if the 'next' button is within the pagination elements set 
+				//we still have pages ahead and we are not in the last page.
+				if (lastPag.hasAttr("href") && !lastPag.hasAttr("title")) 
+					return false;
+				else
+					return true;
+			}
+			else {
+				return true;
+			}
+		}
 	}
 	
 	/*public List<HashMap<String,Object>> getCommunitiesInfo() {
