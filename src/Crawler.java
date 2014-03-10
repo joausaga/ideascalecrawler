@@ -541,7 +541,7 @@ public class Crawler {
 		String url = community.get("url");
 		String idCommunity = community.get("id");
 		
-		ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url,timer);
+		ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url);
 		if (tweets.size() > 0) {
 			for (HashMap<String,Object> tweet : tweets) {
 				String idTweet = (String) tweet.get("id");
@@ -561,7 +561,7 @@ public class Crawler {
 		for (HashMap<String,String> idea : ideas) {
 			String url = idea.get("url");
 			String idIdea = idea.get("id");
-			ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url,timer);
+			ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url);
 			if (tweets.size() > 0) {
 				for (HashMap<String,Object> tweet : tweets) {
 					String idTweet = (String) tweet.get("id");
@@ -598,15 +598,16 @@ public class Crawler {
 			//Update metrics of tweets related to communities
 			ArrayList<HashMap<String,String>> tweets = db.getCommunitiesTweets();
 			for (HashMap<String,String> tweet : tweets) {
-				HashMap<String,Integer> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"), timer);
+				HashMap<String,Long> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"));
 				db.updateCommunityTweetMetric(tweet.get("id"), newMetrics);
 			}
 			//Update metrics of tweets related to ideas
 			tweets = db.getIdeasTweets();
 			for (HashMap<String,String> tweet : tweets) {
-				HashMap<String,Integer> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"), timer);
+				HashMap<String,Long> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"));
 				db.updateIdeaTweetMetric(tweet.get("id"), newMetrics);
 			}
+			Util.printMessage("Tweets Metrics Update finished.", "info", logger);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);

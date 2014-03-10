@@ -909,15 +909,15 @@ public class DBManager {
 		return tweets;
 	}
 	
-	public void updateIdeaTweetMetric(String id, HashMap<String,Integer> newMetrics) 
+	public void updateIdeaTweetMetric(String id, HashMap<String,Long> newMetrics) 
 	throws SQLException {
 		preparedStatement = connection.prepareStatement("UPDATE tweets_ideas SET " +
-														"retweets = ?, favorites = ? " +
+														"retweets = ?, favorites = ?, " +
 														"replies = ? WHERE " +
 														"id = ?");
-		preparedStatement.setInt(1, newMetrics.get("retweets"));
-		preparedStatement.setInt(2, newMetrics.get("favorites"));
-		preparedStatement.setInt(3, newMetrics.get("replies"));
+		preparedStatement.setLong(1, newMetrics.get("retweets"));
+		preparedStatement.setLong(2, newMetrics.get("favorites"));
+		preparedStatement.setLong(3, newMetrics.get("replies"));
 		preparedStatement.setString(4, id);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
@@ -942,15 +942,15 @@ public class DBManager {
 		return tweets;
 	}
 	
-	public void updateCommunityTweetMetric(String id, HashMap<String,Integer> newMetrics) 
+	public void updateCommunityTweetMetric(String id, HashMap<String,Long> newMetrics) 
 	throws SQLException {
 		preparedStatement = connection.prepareStatement("UPDATE tweets_communities SET " +
-														"retweets = ?, favorites = ? " +
+														"retweets = ?, favorites = ?, " +
 														"replies = ? WHERE " +
 														"id = ?");
-		preparedStatement.setInt(1, newMetrics.get("retweets"));
-		preparedStatement.setInt(2, newMetrics.get("favorites"));
-		preparedStatement.setInt(3, newMetrics.get("replies"));
+		preparedStatement.setLong(1, newMetrics.get("retweets"));
+		preparedStatement.setLong(2, newMetrics.get("favorites"));
+		preparedStatement.setLong(3, newMetrics.get("replies"));
 		preparedStatement.setString(4, id);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
