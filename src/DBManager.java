@@ -955,4 +955,58 @@ public class DBManager {
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
+	
+	public void insertSyncProcess(String communityURL, String currentTab, 
+								  Integer currentPage, Integer communityId) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("INSERT INTO sync_progress " +
+														"(community_url, current_tab, " +
+														"current_page, community_id) " +
+														"values (?, ?, ?, ?)");
+		preparedStatement.setString(1, communityURL);
+		preparedStatement.setString(2, currentTab);
+		preparedStatement.setInt(3, currentPage);
+		preparedStatement.setInt(4, communityId);
+		
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public HashMap<String,Object> getUnfinishedSyncProcess() throws SQLException {
+		HashMap<String,Object> unfinishedProcess = new HashMap<String,Object>();
+		
+		preparedStatement = connection.prepareStatement("SELECT * " +
+														"FROM sync_progress");
+		resultSet = preparedStatement.executeQuery();
+		if (resultSet.first()) {
+			unfinishedProcess.put("id", resultSet.getInt("id"));
+			unfinishedProcess.put("community_id", resultSet.getInt("community_id"));
+			unfinishedProcess.put("community_url", resultSet.getString("community_url"));
+			unfinishedProcess.put("current_tab", resultSet.getString("current_tab"));
+			unfinishedProcess.put("current_page", resultSet.getInt("current_page"));
+		}
+		
+		preparedStatement.close();
+		resultSet.close();
+		
+		return unfinishedProcess;
+	}
+	
+	public void cleanSyncProgressTable() throws SQLException {
+		//Clean the table since it should be only one progress running at
+		//the same time
+		preparedStatement = connection.prepareStatement("DELETE FROM sync_progress");
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public void updateSyncProcess(Integer currentPage) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE sync_progress SET " +
+														"current_page = ?");
+		preparedStatement.setInt(1, currentPage);
+		
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
 }

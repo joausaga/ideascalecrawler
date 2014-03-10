@@ -3,6 +3,7 @@ package src;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -354,14 +355,22 @@ public class Crawler {
 	private static void syncActiveCommunitiesInfo(String opSync) {
 		long startingTime = 0;
 		ArrayList<HashMap<String, String>> activeCommunities;
-		DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 		Calendar cal = Calendar.getInstance();
 		Date today = cal.getTime();
 		ArrayList<String> incrementers = new ArrayList<String>();
-		String incrementer = "";
-		int incrementersCounter = 0;
+		ArrayList<String> currentIncrementers;
 		
 		try {
+			//Before starting check whether exists unfinished processes and finishing them
+			HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
+			if (!unfinishedProcess.isEmpty()) {
+				currentIncrementers = resumeUnfinishedProcess(unfinishedProcess, today);
+				for (String incrementer : currentIncrementers)
+					incrementers.add(incrementer);
+				finishCommunitySync(startingTime, (String) unfinishedProcess.get("community_url"),
+								    unfinishedProcess.get("community_id").toString(), today, 
+								    currentIncrementers);
+			}
 			if (opSync.equals("1"))
 				db.resetSyncFlag();
 			activeCommunities = db.getActiveCommunities();
@@ -378,54 +387,29 @@ public class Crawler {
     				url = url.substring(0, colon) + "s" + 
     					  url.substring(colon);
     			}				
-				
-				//url = "http://niso.ideascale.com";
 				//1: Sync Community Ideas and Social Network Statistics
-				incrementersCounter = incrementers.size();
-				incrementer = syncCommunitySnStatsAndIdeas(activeCommunity,today);
-				if (!incrementer.isEmpty()) incrementers.add(incrementer);
+				currentIncrementers = syncCommunitySnStatsAndIdeas(activeCommunity,today);
+				for (String incrementer : currentIncrementers)
+					incrementers.add(incrementer);
 				//2: Save Community Tweets
 				saveCommunityTweets(activeCommunity);
 				//3: Save Community Ideas Tweets
 				saveCommunityIdeasTweets(activeCommunity);
-				
-				HashMap<String,String> duration = calcOpDuration(startingTime);
-				
-				Util.printMessage("The syncronization of communities'ideas has " +
-								  "finished with a duration of: " + 
-								  duration.get("hours") + ":" + 
-						 	 	  duration.get("minutes")  + ":" + 
-						 	 	  duration.get("seconds"),"info",logger);
-				
-				//Register operation in Audit table
-				Date opDuration = timeFormat.parse(duration.get("hours") + ":" + 
-												   duration.get("minutes")  + ":" + 
-												   duration.get("seconds"));
-				String opMsg = "Synchronization of the ideas of the community: " + 
-								activeCommunity.get("name");
-				if (incrementers.size() > incrementersCounter)
-					opMsg += ". It had incremented its social network counters";
-				
-				db.updateSyncFlag(activeCommunity.get("id"));				
-				db.registerOperation(today, opMsg, opDuration);	
-				
+				//Finishing synchronization
+				finishCommunitySync(startingTime,activeCommunity.get("name"),
+									activeCommunity.get("id"), today, currentIncrementers);
 				//Wait for a moment to avoid being banned
 				double rand = Math.random() * 5;		        			
     			Thread.sleep((long) (rand * 1000)); 
 			}
-			
 			if (!incrementers.isEmpty()) {
-				Util.printMessage("The following communities and ideas had " +
-							 	  "incremented their social network counters: ","info",logger);
+				Util.printMessage(incrementers.size() + " communities/ideas had " +
+				 		  		  "incremented their social network counters.", "info",logger);
+				Util.printMessage("They are: ","info",logger);
 				for (String incr : incrementers) {
 					Util.printMessage(incr,"info",logger);
 				}
-			}
-			
-			if (!incrementers.isEmpty())
-				Util.printMessage(incrementers.size() + " communities/ideas had " +
-						 		  "incremented their social network counters.", "info",logger);
-			
+			}			
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
@@ -438,67 +422,75 @@ public class Crawler {
 		}
 	}
 	
-	private static String syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
-										  			   Date today) 
+	private static void finishCommunitySync(long startingTime, String communityName, 
+											String communityId, Date today,
+											ArrayList<String> incrementers) 
+	throws ParseException, SQLException {
+		DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+		HashMap<String,String> duration = calcOpDuration(startingTime);
+		
+		Util.printMessage("The syncronization of communities'ideas has " +
+						  "finished with a duration of: " + 
+						  duration.get("hours") + ":" + 
+				 	 	  duration.get("minutes")  + ":" + 
+				 	 	  duration.get("seconds"),"info",logger);
+		
+		//Register operation in Audit table
+		Date opDuration = timeFormat.parse(duration.get("hours") + ":" + 
+										   duration.get("minutes")  + ":" + 
+										   duration.get("seconds"));
+		String opMsg = "Synchronization of the ideas of the community: " + 
+						communityName;
+		
+		for (String incrementer : incrementers)
+			opMsg += incrementer + "has incremented its social network counters\n";
+		
+		db.updateSyncFlag(communityId);				
+		db.registerOperation(today, opMsg, opDuration);	
+	}
+	
+	private static ArrayList<String> resumeUnfinishedProcess(HashMap<String,Object> unfinishedProcess,
+															 Date today) 
+	throws Exception {
+		ArrayList<String> incrementers = new ArrayList<String>();
+		ArrayList<HashMap<String,Object>> ideas = commInfoReader.resumeSyncProcess(unfinishedProcess, db);
+		for (int i = 0; i < ideas.size(); i++) {
+			HashMap<String,Object> idea = ideas.get(i);
+			Integer ideaId = Integer.parseInt((String) idea.get("id"));
+			HashMap<String,String> existingIdea = db.ideaAlreadyInserted(ideaId);
+			if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
+				incrementers.add("Idea: " + existingIdea.get("name"));
+		}
+		return incrementers;
+	}
+	
+	private static ArrayList<String> syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
+										  			   			  Date today) 
 	throws Exception 
 	{
-		HashMap<String,Object> communitySnStats = null;
-		String incrementer = "";
-		Integer idIdeaDB = -1;
+		HashMap<String,Object> communityStats = null;
+		ArrayList<String> incrementers = new ArrayList<String>();
 		
 		String url = community.get("url");
 		String communityId = community.get("id");
 		
-		ArrayList<HashMap<String,Object>> communityElements = commInfoReader.getCommunityStatsAndIdeas(url);
-		for (int i = 0; i < communityElements.size(); i++) {
-			if (communityElements.get(i).get("type") == "community") {
-				communitySnStats = communityElements.get(i);
-				db.updateCommunityStats(communitySnStats, communityId);				
-				if (checkIncrementSNCounters(today,community,communitySnStats,"community"))
-					incrementer = "Community: " + community.get("name");
-			}
-			else {
-				HashMap<String,Object> idea = communityElements.get(i);
-				Integer ideaId = Integer.parseInt((String) idea.get("id"));
-				HashMap<String,String> existingIdea = db.ideaAlreadyInserted(ideaId);
-				if (existingIdea.isEmpty()) {
-					db.insertCommunityIdea(idea,communityId);
-				}
-				else {
-					db.updateCommunityIdea(idea, ideaId);
-					if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
-						incrementer = "Idea: " + existingIdea.get("name");
-				}
-				if (existingIdea.isEmpty())
-					idIdeaDB = db.getIdeaId(ideaId);
-				else
-					idIdeaDB = Integer.parseInt(existingIdea.get("id"));
-				if (idIdeaDB != -1) {
-					//Save Comments
-					if ((Integer) idea.get("comments") > 0) {
-						ArrayList<HashMap<String,String>> commentsMeta = 
-						(ArrayList<HashMap<String, String>>) idea.get("comments-meta");
-						for (HashMap<String,String> comment : commentsMeta) {
-							Integer commentId = Integer.parseInt(comment.get("id"));
-							if (!db.commentAlreadyExisting(commentId, idIdeaDB))
-								db.insertComment(comment, idIdeaDB, today);
-						}
-					}
-					//Save Votes
-					if ((Integer) idea.get("score") > 0) {
-						ArrayList<HashMap<String,String>> votesMeta = 
-						(ArrayList<HashMap<String, String>>) idea.get("votes-meta");
-						for (HashMap<String,String> vote : votesMeta)
-							db.insertVote(vote, idIdeaDB, today);
-					}
-				}
-				else {
-					throw new Exception("Couldn't find in the DB the idea with the ID " + ideaId +" in IdeaScale.");
-				}
-			}
+		communityStats = commInfoReader.syncCommunityStats(communityId, url, db);
+		if (checkIncrementSNCounters(today,community,communityStats,"community"))
+			incrementers.add("Community: " + community.get("name"));
+		
+		ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) communityStats.get("tabs");
+		
+		ArrayList<HashMap<String,Object>> ideas = commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db);
+		
+		for (int i = 0; i < ideas.size(); i++) {
+			HashMap<String,Object> idea = ideas.get(i);
+			Integer ideaId = Integer.parseInt((String) idea.get("id"));
+			HashMap<String,String> existingIdea = db.ideaAlreadyInserted(ideaId);
+			if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
+				incrementers.add("Idea: " + existingIdea.get("name"));
 		}
 		
-		return incrementer;
+		return incrementers;
 	}
 	
 	private static boolean checkIncrementSNCounters(Date today, 
@@ -594,6 +586,11 @@ public class Crawler {
 	}
 	
 	public static void updateTweetsMetrics() {
+		Calendar cal = Calendar.getInstance();
+		Date today = cal.getTime();
+		DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+		long startingTime = System.currentTimeMillis();
+		
 		try {
 			//Update metrics of tweets related to communities
 			ArrayList<HashMap<String,String>> tweets = db.getCommunitiesTweets();
@@ -608,6 +605,12 @@ public class Crawler {
 				db.updateIdeaTweetMetric(tweet.get("id"), newMetrics);
 			}
 			Util.printMessage("Tweets Metrics Update finished.", "info", logger);
+			
+			HashMap<String,String> duration = calcOpDuration(startingTime);
+			Date opDuration = timeFormat.parse(duration.get("hours") + ":" + 
+					   						   duration.get("minutes")  + ":" + 
+					   						   duration.get("seconds"));
+			db.registerOperation(today, "Updating tweet metrics", opDuration);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);

@@ -1,5 +1,6 @@
 package web;
 
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import src.Crawler;
+import src.DBManager;
 import src.Util;
 
 
@@ -39,48 +40,76 @@ public class CommunityInfoReader extends HTMLReader {
 		return comStatistics;
 	}
 	
-	public ArrayList<HashMap<String,Object>> getCommunityStatsAndIdeas(String communityURL) 
+	public HashMap<String,Object> syncCommunityStats(String communityId, String communityURL, 
+													 DBManager db) 
+	throws SQLException {
+		Util.printMessage("Getting community's stats","info",logger);
+		//Get community statistics
+		HashMap<String,Object> comStatistics = statsReader.getCommunityStatistic(communityURL);
+		//Update community statistics
+		db.updateCommunityStats(comStatistics, communityId);
+		
+		return comStatistics;
+	}
+	
+	public ArrayList<HashMap<String,Object>> resumeSyncProcess(HashMap<String,Object> process, DBManager db) 
 	throws Exception {
-		Integer pageNum = 0;
+		Util.printMessage("Resuming a previous unfinished process","info",logger);
+		
+		String communityURL = (String) process.get("community_url");
+		Integer communityId = (Integer) process.get("community_id");
+		Integer currentPage = (Integer) process.get("current_page");
+		String content = getUrlContent(Util.toURI(communityURL));
+		Document doc = Jsoup.parse(content);
+		String currentTab = (String) process.get("current_tab");
+		
+		ArrayList<HashMap<String,String>> tabs = statsReader.getTabsURL(doc);
+		for (HashMap<String,String> tab : tabs) {
+			if (tab.get("url").equals(currentTab))
+				break;
+			else
+				tabs.remove(tab);
+		}
+		
+		ArrayList<HashMap<String,Object>> info = syncIdeas(communityURL,communityId,tabs,currentPage, db);
+		
+		return info;
+	}
+	
+	public ArrayList<HashMap<String,Object>> syncIdeas(String communityURL, Integer communityId,
+						  							    ArrayList<HashMap<String,String>> tabs, 
+						  							    Integer currentPageNum, DBManager db) 
+	throws Exception 
+	{
+		Integer pageNum = currentPageNum;
 		String SUFFIX = "&pageOffset=";
 		String IDEA_CONTENT_CLASS = "content";
 		String IDEA_TITLE_CLASS = "title";
 		String IDEA_AUTHOR_ATTR_KEY = "rel";
 		String IDEA_AUTHOR_ATTR_VAL = "user";
 		String IDEA_CREATION_TIME = "published";
-		Integer ideasProcessed = 0;
 		Document doc;
+		Calendar cal = Calendar.getInstance();
+		Date today = cal.getTime();
 		ArrayList<HashMap<String,Object>> info = new ArrayList<HashMap<String,Object>>();
 		boolean lastPage;
-		
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		Integer idIdeaDB = -1;
 		
-		Util.printMessage("Getting community's stats and ideas","info",logger);
-		
-		//Get community statistics
-		HashMap<String,Object> comStatistics = statsReader.getCommunityStatistic(communityURL);
-		comStatistics.put("type", "community");
-		
-		//Get enabled tabs
-		ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) comStatistics.get("tabs");
-		
-		info.add(comStatistics);
-		
+		Util.printMessage("Getting community's ideas","info",logger);
 		for (HashMap<String,String> tab : tabs) {
 			String currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
 			String page = getUrlContent(Util.toURI(currentPage));
-			Integer tabIdeas = Integer.parseInt(tab.get("ideas"));
-			ideasProcessed = 0;
 			lastPage = false;
 			
 			Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
 			
 			doc = Jsoup.parse(page);
-			//while (ideasProcessed < tabIdeas || !emptyList(doc)) {
+			
+			db.insertSyncProcess(communityURL, tab.get("url"), pageNum, communityId);
 			while (!lastPage) {
 				Element ideasList = doc.getElementById("ideas");
 				for (Element ideaList : ideasList.children()) {
-					ideasProcessed += 1;
 					String ideaId = ideaList.attr("id").split("-")[1];
 					if (isNewIdea(ideaId,info)) {
 						Elements ideaContentElems = ideaList.getElementsByClass(IDEA_CONTENT_CLASS);
@@ -91,7 +120,6 @@ public class CommunityInfoReader extends HTMLReader {
 								Element ideaTitle = ideaTitleElems.first();
 								String ideaLink = ideaTitle.child(0).attr("href");
 								HashMap<String,Object> ideaStats = statsReader.getIdeaStatistics(communityURL,ideaLink);
-								ideaStats.put("type", "idea");
 								ideaStats.put("title", ideaTitle.text());
 								ideaStats.put("url", communityURL+ideaLink);
 								ideaStats.put("id", ideaId);
@@ -124,6 +152,39 @@ public class CommunityInfoReader extends HTMLReader {
 								else {
 									ideaStats.put("status", null);
 								}
+								//Update/Insert Idea
+								HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
+								if (existingIdea.isEmpty())
+									db.insertCommunityIdea(ideaStats,communityId.toString());
+								else
+									db.updateCommunityIdea(ideaStats, Integer.parseInt(ideaId));
+								//Save Comments and Votes
+								if (existingIdea.isEmpty())
+									idIdeaDB = db.getIdeaId(Integer.parseInt(ideaId));
+								else
+									idIdeaDB = Integer.parseInt(existingIdea.get("id"));
+								if (idIdeaDB != -1) {
+									//Comments
+									if ((Integer) ideaStats.get("comments") > 0) {
+										ArrayList<HashMap<String,String>> commentsMeta = 
+										(ArrayList<HashMap<String, String>>) ideaStats.get("comments-meta");
+										for (HashMap<String,String> comment : commentsMeta) {
+											Integer commentId = Integer.parseInt(comment.get("id"));
+											if (!db.commentAlreadyExisting(commentId, Integer.parseInt(ideaId)))
+												db.insertComment(comment, idIdeaDB, today);
+										}
+									}
+									//Votes
+									if ((Integer) ideaStats.get("score") > 0) {
+										ArrayList<HashMap<String,String>> votesMeta = 
+										(ArrayList<HashMap<String, String>>) ideaStats.get("votes-meta");
+										for (HashMap<String,String> vote : votesMeta)
+											db.insertVote(vote, idIdeaDB, today);
+									}
+								}
+								else {
+									throw new Exception("Could not find idea with id: " + ideaId);
+								}
 								info.add(ideaStats);
 							}
 							else {
@@ -142,6 +203,7 @@ public class CommunityInfoReader extends HTMLReader {
 					Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
 					page = getUrlContent(Util.toURI(currentPage));
 					doc = Jsoup.parse(page);
+					db.updateSyncProcess(pageNum);
 				}
 			}
 			
@@ -149,6 +211,7 @@ public class CommunityInfoReader extends HTMLReader {
 			double rand = Math.random() * 5;		        			
 			Thread.sleep((long) (rand * 1000)); 
 			pageNum = 0;
+			db.cleanSyncProgressTable();
 		}
 		
 		return info;
@@ -156,10 +219,8 @@ public class CommunityInfoReader extends HTMLReader {
 	
 	private boolean isNewIdea(String idIdea, ArrayList<HashMap<String,Object>> elems) {
 		for (HashMap<String,Object> elem : elems) {
-			if (elem.get("type") == "idea" && 
-				elem.get("id") == idIdea) {
+			if (elem.get("id") == idIdea)
 				return false;
-			}
 		}
 		return true;
 	}
