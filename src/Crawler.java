@@ -74,6 +74,7 @@ public class Crawler {
 			}
 			else {
 				Util.printMessage("Unkown argument " + type,"severe",logger);
+				System.exit(1);
 			}
 		}
 		else {
@@ -128,7 +129,7 @@ public class Crawler {
 			}
 			else {
 				Util.printMessage("Unknwon option " + option + ".","severe",logger);
-				System.exit(0);
+				System.exit(1);
 			}
 		}
 		else if(option.equals("4")) {
@@ -136,7 +137,7 @@ public class Crawler {
 		}
 		else {
 			Util.printMessage("Unknwon option " + option + ".","severe",logger);
-			System.exit(0);
+			System.exit(1);
 		}
 	}
 	
@@ -146,21 +147,23 @@ public class Crawler {
 			if (op == 1)
 				syncCommunityCat(directory);
 			else if (op == 3) {
-				if (args.length == 2) {
+				if (args.length == 3) {
 					syncActiveCommunitiesInfo(args[2]);
 				}
 				else {
-					Util.printMessage("Invalid selection of the synchronazation mode","severe",logger);
+					Util.printMessage("Invalid synchronization mode","severe",logger);
+					System.exit(1);
 				}
 			}
 			else if (op == 2) {
-				if (args.length == 2) {
+				if (args.length == 3) {
 					String letters = args[2];
 					ArrayList<String> lettersSync = getSetLettersSync(letters);
 					syncCommunityCat(lettersSync);
 				}
 				else {
 					Util.printMessage("Invalid community directory letters","severe",logger);
+					System.exit(1);
 				}
 			}
 			else if (op == 4) {
@@ -168,10 +171,12 @@ public class Crawler {
 			}
 			else {
 				Util.printMessage("Unknwon background option: " + op,"severe",logger);
+				System.exit(1);
 			}
 		}
 		else {
 			Util.printMessage("Invalid number of arguments for background mode","severe",logger);
+			System.exit(1);
 		}
 	}
 	
@@ -188,7 +193,7 @@ public class Crawler {
 					}
 					else {
 						Util.printMessage("Unknown letter: " + letter + ".","severe",logger);
-						System.exit(0);
+						System.exit(1);
 					}
 				}
 			}
@@ -198,7 +203,7 @@ public class Crawler {
 				startR = directory.indexOf(auxLetters[0]);
 				if (startR == -1) {
 					Util.printMessage("Unknown letter: " + auxLetters[0] + ".","severe",logger);
-					System.exit(0);
+					System.exit(1);
 				}
 				endR = directory.indexOf(auxLetters[1]);
 				if (endR == -1) {
@@ -211,7 +216,7 @@ public class Crawler {
 			}
 			else {
 				Util.printMessage("Unknown symbol.","severe",logger);
-				System.exit(0);
+				System.exit(1);
 			}
 		}
 		else if (letters.length() == 1) {
@@ -220,12 +225,12 @@ public class Crawler {
 			}
 			else {
 				Util.printMessage("Unknown letter: " + letters + ".","severe",logger);
-				System.exit(0);
+				System.exit(1);
 			}
 		}
 		else {
 			Util.printMessage("Wrong input.","severe",logger);
-			System.exit(0);
+			System.exit(1);
 		}
 		
 		return lettersSync;
@@ -374,6 +379,10 @@ public class Crawler {
 			if (opSync.equals("1"))
 				db.resetSyncFlag();
 			activeCommunities = db.getActiveCommunities();
+			if (activeCommunities.size() == 0) {
+				Util.printMessage("All communities are already synchronized.","info",logger);
+				return;
+			}
 			System.out.println("");
 			Util.printMessage("Starting the synchronization of active communities...","info",logger);
 			for (HashMap<String,String> activeCommunity : activeCommunities) {

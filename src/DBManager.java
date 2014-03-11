@@ -20,12 +20,14 @@ public class DBManager {
 	private final static String DBNAME = "ideascale";
 	private final static String DBUSER = "ideascale";
 	private final static String DBPASS = "ideascale";
+	private final static String HOST = "localhost";
+	private final static String PORT = "8889";
 	
 	public DBManager() {
 		// This will load the MySQL driver, each DB has its own driver
 	    try {
 			Class.forName("com.mysql.jdbc.Driver");
-			String connectionStatement = "jdbc:mysql://localhost:8889/" +
+			String connectionStatement = "jdbc:mysql://"+HOST+":"+PORT+"/" +
 										 DBNAME + "?user=" + DBUSER +
 										 "&password=" + DBPASS;
 			// Setup the connection with the DB
