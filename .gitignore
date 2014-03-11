@@ -1,0 +1,8 @@
+*.class
+*.txt*
+*.csv
+.project
+.DS_Store
+.classpath
+.settings/
+/bin
