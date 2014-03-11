@@ -1,4 +1,0 @@
-Mar 11, 2014 8:10:02 AM src.Util printMessage
-INFO: Crawler started in background mode.
-Mar 11, 2014 8:10:02 AM src.Util printMessage
-INFO: All communities are already synchronized.
