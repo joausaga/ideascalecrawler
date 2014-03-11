@@ -519,10 +519,36 @@ public class Crawler {
 			//Log increment in social network counters
 			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
 				foundIncrementer = true;
-				if (type == "idea")
+				if (type == "idea") {
+					if (Integer.parseInt((String)current.get("votes")) < 
+						Integer.parseInt(old.get("votes")))
+						Util.printMessage("There are less votes than before. Idea: " +
+										  old.get("name"), "severe", logger);
+					if (Integer.parseInt((String)current.get("comments")) < 
+						Integer.parseInt(old.get("comments")))
+						Util.printMessage("There are less comments than before. Idea: " +
+										  old.get("name"), "severe", logger);
+					if (Integer.parseInt((String)current.get("ideas")) < 
+						Integer.parseInt(old.get("ideas")))
+						Util.printMessage("There are less ideas than before. Idea: " +
+										  old.get("name"), "severe", logger);
 					db.saveLogIdea(today, old, current);
-				else
+				}
+				else {
+					if (Integer.parseInt((String)current.get("votes")) < 
+						Integer.parseInt(old.get("votes")))
+						Util.printMessage("There are less votes than before. Community: " +
+										  old.get("name"), "severe", logger);
+					if (Integer.parseInt((String)current.get("comments")) < 
+						Integer.parseInt(old.get("comments")))
+						Util.printMessage("There are less comments than before. Community: " +
+										  old.get("name"), "severe", logger);
+					if (Integer.parseInt((String)current.get("ideas")) < 
+						Integer.parseInt(old.get("ideas")))
+						Util.printMessage("There are less ideas than before. Community: " +
+										  old.get("name"), "severe", logger);
 					db.saveLogCommunity(today, old, current);
+				}
 			}
 		}
 		else {
