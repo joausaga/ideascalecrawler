@@ -617,9 +617,9 @@ public class DBManager {
 		preparedStatement = connection.prepareStatement("INSERT INTO ideas " +
 				"(ideascale_id, title, description, " +
 				"creation_datetime, tags, author_name, " +
-				"community_id, twitter, facebook, url, votes, comments, " +
-				"similar_to, author_id, status) " +
-				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"community_id, twitter, facebook, url, score, comments, " +
+				"similar_to, author_id, status, considered) " +
+				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, idIdea);
 		preparedStatement.setString(2, (String) idea.get("title"));
 		if (idea.get("description") != null)
@@ -669,11 +669,19 @@ public class DBManager {
 			preparedStatement.setInt(14, Integer.parseInt((String) idea.get("author-id")));
 		else
 			preparedStatement.setNull(14, java.sql.Types.INTEGER);
-		
-		if (idea.get("status") != null)
-			preparedStatement.setString(15, (String) idea.get("status"));
-		else
+		if (idea.get("status") != null) {
+			String status = (String) idea.get("status");
+			preparedStatement.setString(15, status);
+			if (status.equals("completed") || status.equals("under-review") ||
+				status.equals("in-progress"))
+				preparedStatement.setBoolean(16, true);
+			else
+				preparedStatement.setBoolean(16, false);
+		}
+		else {
 			preparedStatement.setNull(15, java.sql.Types.NULL);
+			preparedStatement.setBoolean(16, false);
+		}
 		
 		preparedStatement.executeUpdate();
 		
@@ -684,8 +692,9 @@ public class DBManager {
 	throws SQLException {
 		preparedStatement = connection.prepareStatement(
 				"UPDATE ideas SET " +
-				"twitter = ?, facebook = ?, votes = ?, " +
-				"comments = ?, similar_to = ?, status = ?, author_name = ? " +
+				"twitter = ?, facebook = ?, score = ?, " +
+				"comments = ?, similar_to = ?, status = ?, author_name = ?, " +
+				"considered = ? " +
 				"WHERE id = ?");
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
@@ -707,15 +716,25 @@ public class DBManager {
 			preparedStatement.setInt(5, (Integer) idea.get("similar"));
 		else
 			preparedStatement.setNull(5, java.sql.Types.INTEGER);
-		if (idea.get("status") != null)
-			preparedStatement.setString(6, (String) idea.get("status"));
-		else
+		if (idea.get("status") != null) {
+			String status = (String) idea.get("status");
+			preparedStatement.setString(6, status);
+			if (status.equals("completed") || status.equals("under-review") ||
+				status.equals("in-progress"))
+				preparedStatement.setBoolean(8, true);
+			else
+				preparedStatement.setBoolean(8, false);
+		}
+		else {
 			preparedStatement.setNull(6, java.sql.Types.NULL);
+			preparedStatement.setBoolean(8, false);
+		}
 		if (idea.get("author-name") != null)
 			preparedStatement.setString(7, (String) idea.get("author-name"));
 		else
 			preparedStatement.setNull(7, java.sql.Types.NULL);
-		preparedStatement.setInt(8, idIdea);
+	
+		preparedStatement.setInt(9, idIdea);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -733,7 +752,7 @@ public class DBManager {
 			existingIdea.put("name", resultSet.getString("title"));
 			existingIdea.put("facebook", resultSet.getString("facebook"));
 			existingIdea.put("twitter", resultSet.getString("twitter"));
-			existingIdea.put("score", resultSet.getString("votes"));
+			existingIdea.put("score", resultSet.getString("score"));
 			existingIdea.put("comments", resultSet.getString("comments"));
 			existingIdea.put("url", resultSet.getString("url"));
 		}
@@ -841,10 +860,9 @@ public class DBManager {
 														"(date, idea_id, name," +
 														"old_facebook, new_facebook," +
 														"old_twitter, new_twitter," +
-														"old_comments, new_comments," +
-														"old_votes, new_votes) " +
+														"old_comments, new_comments) " +
 														"values (?, ?, ?, ?, ?, ?, " +
-														"?, ?, ?, ?, ?)");
+														"?, ?, ?)");
 		java.sql.Date date = new java.sql.Date(currentDate.getTime());
 		preparedStatement.setDate(1, date);
 		preparedStatement.setString(2, existingIdea.get("id"));
@@ -855,8 +873,6 @@ public class DBManager {
 		preparedStatement.setInt(7, Integer.parseInt((String) newIdea.get("twitter")));
 		preparedStatement.setInt(8, Integer.parseInt(existingIdea.get("comments")));
 		preparedStatement.setInt(9, (Integer) newIdea.get("comments"));
-		preparedStatement.setInt(10, Integer.parseInt(existingIdea.get("score")));
-		preparedStatement.setInt(11, (Integer) newIdea.get("score"));
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}

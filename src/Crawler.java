@@ -596,15 +596,6 @@ public class Crawler {
 			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
 				foundIncrementer = true;
 				if (type.equals("idea")) {
-					if (current.get("score") != null && old.get("score") != null) {
-						if ((Integer) current.get("score") < 
-							Integer.parseInt(old.get("score")))
-							Util.printMessage("There are less votes than before. " +
-											  "Idea: " + old.get("url") + ". " +
-											  "Before: " + old.get("score") +
-											  " - Now: " + current.get("score"), 
-											  "severe", logger);
-					}
 					if (current.get("comments") != null && old.get("comments") != null) {
 						if ((Integer) current.get("comments") < 
 							Integer.parseInt(old.get("comments")))

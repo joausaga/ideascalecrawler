@@ -208,12 +208,18 @@ public class StatisticReader extends HTMLReader {
 			statistics.put("comments", 0);
 		}
 		
+		//Get score
+		Element scoreElem = doc.getElementsByAttributeValueMatching("title", "current score").first();
+		if (scoreElem != null)
+			statistics.put("score", Integer.parseInt(scoreElem.text()));
+		else
+			statistics.put("score", 0);
+		
 		//Get vote counter and votes meta-info
-		Element scoreElem = doc.getElementById("vote-activity-list");
-		if (scoreElem != null) {
-			statistics.put("score", scoreElem.children().size());
+		Element voteElem = doc.getElementById("vote-activity-list");
+		if (voteElem != null) {
 			ArrayList<HashMap<String,String>> votesMeta = new ArrayList<HashMap<String,String>>();
-			for (Element vote : scoreElem.children()) {
+			for (Element vote : voteElem.children()) {
 				HashMap<String,String> voteMeta = new HashMap<String,String>();
 				Elements voter = vote.getElementsByClass("voter");
 				if (voter.first().children().size() > 1) {
@@ -244,9 +250,6 @@ public class StatisticReader extends HTMLReader {
 				votesMeta.add(voteMeta);
 			}
 			statistics.put("votes-meta", votesMeta);
-		}
-		else {
-			statistics.put("score", 0);
 		}
 		
 		Element similarIdeas = doc.getElementById(IDEA_SIMILAR_ID);
