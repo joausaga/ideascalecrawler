@@ -81,11 +81,12 @@ public class Crawler {
 			System.out.println("Usage TYPE [OPTION] [LETTERS] [SYNCMODE]");
 			System.out.println("TYPE: 'fg' or 'bg'");
 			System.out.println("If 'fg':");
-			System.out.println("- OPTION: 1, 2, 3 or 4");
+			System.out.println("- OPTION: 1, 2, 3, 4, or 5");
 			System.out.println("- 1: For synchronizing the entire IdeaScale community directory");
 			System.out.println("- 2: For synchronizing only a sub-set of communities");
 			System.out.println("- 3: For synchronizing ideas, votes, comments and social sharing counters of active communities");
 			System.out.println("- 4: For updating recorded tweet's metrics");
+			System.out.println("- 5: For synchronizing ideas, votes, comments and social sharing counters of active communities, and updating recorded tweet's metrics");
 			System.out.println("If 'OPTION' = 2:");
 			System.out.println("- LETTERS: ");
 			System.out.println("- 'a,b,c' specify a group of communities directory letters by using comma-separeted values");
@@ -104,6 +105,7 @@ public class Crawler {
 		System.out.println("2 - for synchronizing only a sub-set of communities");
 		System.out.println("3 - for synchronizing active communities");
 		System.out.println("4 - for updating recorded tweet's metrics");
+		System.out.println("5 - for synchronizing the ideas, votes, comments and social sharing counters of all active communities, and updating recorded tweet's metrics");
 		
 		String option = user_input.next();
 		
@@ -133,6 +135,10 @@ public class Crawler {
 			}
 		}
 		else if(option.equals("4")) {
+			updateTweetsMetrics();
+		}
+		else if(option.equals("5")) {
+			syncActiveCommunitiesInfo("1");
 			updateTweetsMetrics();
 		}
 		else {
@@ -167,6 +173,10 @@ public class Crawler {
 				}
 			}
 			else if (op == 4) {
+				updateTweetsMetrics();
+			}
+			else if(op == 5) {
+				syncActiveCommunitiesInfo("1");
 				updateTweetsMetrics();
 			}
 			else {
@@ -519,34 +529,51 @@ public class Crawler {
 			//Log increment in social network counters
 			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
 				foundIncrementer = true;
-				if (type == "idea") {
-					if (Integer.parseInt((String)current.get("votes")) < 
-						Integer.parseInt(old.get("votes")))
-						Util.printMessage("There are less votes than before. Idea: " +
-										  old.get("name"), "severe", logger);
-					if (Integer.parseInt((String)current.get("comments")) < 
-						Integer.parseInt(old.get("comments")))
-						Util.printMessage("There are less comments than before. Idea: " +
-										  old.get("name"), "severe", logger);
-					if (Integer.parseInt((String)current.get("ideas")) < 
-						Integer.parseInt(old.get("ideas")))
-						Util.printMessage("There are less ideas than before. Idea: " +
-										  old.get("name"), "severe", logger);
+				if (type.equals("idea")) {
+					if (current.get("score") != null && old.get("score") != null) {
+						if (Integer.parseInt((String)current.get("score")) < 
+							Integer.parseInt(old.get("score")))
+							Util.printMessage("There are less votes than before. " +
+											  "Idea: " + old.get("name"), 
+											  "severe", logger);
+					}
+					if (current.get("comments") != null && old.get("comments") != null) {
+						if (Integer.parseInt((String)current.get("comments")) < 
+							Integer.parseInt(old.get("comments")))
+							Util.printMessage("There are less comments than before. " +
+											  "Idea: " + old.get("name"), 
+											  "severe", logger);
+					}
+					if (current.get("ideas") != null && old.get("ideas") != null) {
+						if (Integer.parseInt((String)current.get("ideas")) < 
+							Integer.parseInt(old.get("ideas")))
+							Util.printMessage("There are less ideas than before. Idea: " +
+											  old.get("name"), "severe", logger);
+					}
 					db.saveLogIdea(today, old, current);
 				}
 				else {
-					if (Integer.parseInt((String)current.get("votes")) < 
-						Integer.parseInt(old.get("votes")))
-						Util.printMessage("There are less votes than before. Community: " +
-										  old.get("name"), "severe", logger);
-					if (Integer.parseInt((String)current.get("comments")) < 
-						Integer.parseInt(old.get("comments")))
-						Util.printMessage("There are less comments than before. Community: " +
-										  old.get("name"), "severe", logger);
-					if (Integer.parseInt((String)current.get("ideas")) < 
-						Integer.parseInt(old.get("ideas")))
-						Util.printMessage("There are less ideas than before. Community: " +
-										  old.get("name"), "severe", logger);
+					if (current.get("votes") != null && old.get("votes") != null) {
+						if (Integer.parseInt((String)current.get("votes")) < 
+							Integer.parseInt(old.get("votes")))
+							Util.printMessage("There are less votes than before. " +
+											  "Community: " + old.get("name"), 
+											  "severe", logger);
+					}
+					if (current.get("comments") != null && old.get("comments") != null) {
+						if (Integer.parseInt((String)current.get("comments")) < 
+							Integer.parseInt(old.get("comments")))
+							Util.printMessage("There are less comments than before. " +
+											  "Community: " + old.get("name"), 
+											  "severe", logger);
+					}
+					if (current.get("ideas") != null && old.get("ideas") != null) {
+						if (Integer.parseInt((String)current.get("ideas")) < 
+							Integer.parseInt(old.get("ideas")))
+							Util.printMessage("There are less ideas than before. " +
+											  "Community: " + old.get("name"), 
+											  "severe", logger);
+					}
 					db.saveLogCommunity(today, old, current);
 				}
 			}
