@@ -1,5 +1,6 @@
 package src;
 
+import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.text.DateFormat;
@@ -22,10 +23,6 @@ import org.jsoup.select.Elements;
 import web.CommunityInfoReader;
 import api.TweetSearch;
 import api.TweetUpdater;
-import src.Util;
-import src.Timer;
-import src.CrawlLogger;
-import src.DBManager;
 
 public class Crawler {
 	private static final Logger logger = Logger.getLogger(Crawler.class .getName()); 
@@ -36,7 +33,7 @@ public class Crawler {
 	private static ArrayList<String> directory = null;
 	private static Scanner user_input = null;
 	private final static String IDEASCALE_BASE_URL = "https://ideascale.com/index/";
-	private static Timer timer;
+	private static final String EXECUTIONFILE = "running.lck";
 	
 	public static void init() {
 		commInfoReader = new CommunityInfoReader();
@@ -47,7 +44,6 @@ public class Crawler {
 				  	"d","e","f","g","h","i","j","k","l","m","n","o",
 				  	"p","q","r","s","t","u","v","w","x","y","z"));
 		user_input = new Scanner(System.in);
-		timer = new Timer(ts);
 		//logger.setLevel(Level.SEVERE);
 		try {
 			CrawlLogger.setup();
@@ -55,6 +51,10 @@ public class Crawler {
 			e.printStackTrace();
 			throw new RuntimeException("Problems creating the log files");
 		}
+	}
+	
+	public static void exit() {
+		db.close();
 	}
 	
 	/**
@@ -74,6 +74,7 @@ public class Crawler {
 			}
 			else {
 				Util.printMessage("Unkown argument " + type,"severe",logger);
+				exit();
 				System.exit(1);
 			}
 		}
@@ -111,6 +112,7 @@ public class Crawler {
 		
 		if (option.equals("1")) {
 			syncCommunityCat(directory);
+			exit();
 		}
 		else if (option.equals("2")) {
 			System.out.println("Introduce the directory letters you want to " +
@@ -120,6 +122,7 @@ public class Crawler {
 			String letters = user_input.next();
 			ArrayList<String> lettersSync = getSetLettersSync(letters);
 			syncCommunityCat(lettersSync);
+			exit();
 		}
 		else if (option.equals("3")) {
 			System.out.println("Please select one of the synchronization modes:");
@@ -128,21 +131,26 @@ public class Crawler {
 			String opSync = user_input.next();
 			if (opSync.equals("1") || opSync.equals("2")) {
 				syncActiveCommunitiesInfo(opSync);
+				exit();
 			}
 			else {
-				Util.printMessage("Unknwon option " + option + ".","severe",logger);
+				Util.printMessage("Unknown option " + option + ".","severe",logger);
+				exit();
 				System.exit(1);
 			}
 		}
 		else if(option.equals("4")) {
 			updateTweetsMetrics();
+			exit();
 		}
 		else if(option.equals("5")) {
 			syncActiveCommunitiesInfo("1");
 			updateTweetsMetrics();
+			exit();
 		}
 		else {
-			Util.printMessage("Unknwon option " + option + ".","severe",logger);
+			Util.printMessage("Unknown option " + option + ".","severe",logger);
+			exit();
 			System.exit(1);
 		}
 	}
@@ -150,14 +158,22 @@ public class Crawler {
 	private static void startBg(String[]  args) {
 		if (args.length > 1) {
 			Integer op = Integer.parseInt(args[1]);
-			if (op == 1)
+			if (op == 1) {
+				createExecutionFile();
 				syncCommunityCat(directory);
+				removeExecutionFile();
+				exit();
+			}
 			else if (op == 3) {
 				if (args.length == 3) {
+					createExecutionFile();
 					syncActiveCommunitiesInfo(args[2]);
+					removeExecutionFile();
+					exit();
 				}
 				else {
 					Util.printMessage("Invalid synchronization mode","severe",logger);
+					exit();
 					System.exit(1);
 				}
 			}
@@ -165,28 +181,66 @@ public class Crawler {
 				if (args.length == 3) {
 					String letters = args[2];
 					ArrayList<String> lettersSync = getSetLettersSync(letters);
+					createExecutionFile();
 					syncCommunityCat(lettersSync);
+					removeExecutionFile();
+					exit();
 				}
 				else {
 					Util.printMessage("Invalid community directory letters","severe",logger);
+					exit();
 					System.exit(1);
 				}
 			}
 			else if (op == 4) {
+				createExecutionFile();
 				updateTweetsMetrics();
+				removeExecutionFile();
+				exit();
 			}
 			else if(op == 5) {
+				createExecutionFile();
 				syncActiveCommunitiesInfo("1");
 				updateTweetsMetrics();
+				removeExecutionFile();
+				exit();
 			}
 			else {
-				Util.printMessage("Unknwon background option: " + op,"severe",logger);
+				Util.printMessage("Unknown background option: " + op,"severe",logger);
+				exit();
 				System.exit(1);
 			}
 		}
 		else {
 			Util.printMessage("Invalid number of arguments for background mode","severe",logger);
+			exit();
 			System.exit(1);
+		}
+	}
+	
+	private static void createExecutionFile() {
+		File file = new File(EXECUTIONFILE);
+		 
+		try {
+			if (!file.createNewFile()) {
+				Util.printMessage("Cannot create the execution file","severe",logger);
+				System.exit(1);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private static void removeExecutionFile() {
+		File file = new File(EXECUTIONFILE);
+		 
+		if(file.exists()) {
+			if (!file.delete()) {
+				Util.printMessage("Cannot delete the execution file","severe",logger);
+			}
+		}
+		else {
+			Util.printMessage("Execution file does not exist","severe",logger);
 		}
 	}
 	
@@ -354,13 +408,11 @@ public class Crawler {
 					Util.printMessage("- " + newCommunities.get(i),"info",logger);
 			}
 			catch(Exception e) {
-				db.close();
 				e.printStackTrace();
 				logger.log(Level.SEVERE,e.getMessage(),e);
 			}
 		}
 		
-		db.close();
         return newCommunities;		
 	}
 	
@@ -435,9 +487,6 @@ public class Crawler {
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
-		} finally {
-			db.close();
-			timer.terminate();
 		}
 	}
 	
@@ -531,24 +580,18 @@ public class Crawler {
 				foundIncrementer = true;
 				if (type.equals("idea")) {
 					if (current.get("score") != null && old.get("score") != null) {
-						if (Integer.parseInt((String)current.get("score")) < 
+						if ((Integer) current.get("score") < 
 							Integer.parseInt(old.get("score")))
 							Util.printMessage("There are less votes than before. " +
 											  "Idea: " + old.get("name"), 
 											  "severe", logger);
 					}
 					if (current.get("comments") != null && old.get("comments") != null) {
-						if (Integer.parseInt((String)current.get("comments")) < 
+						if ((Integer) current.get("comments") < 
 							Integer.parseInt(old.get("comments")))
 							Util.printMessage("There are less comments than before. " +
 											  "Idea: " + old.get("name"), 
 											  "severe", logger);
-					}
-					if (current.get("ideas") != null && old.get("ideas") != null) {
-						if (Integer.parseInt((String)current.get("ideas")) < 
-							Integer.parseInt(old.get("ideas")))
-							Util.printMessage("There are less ideas than before. Idea: " +
-											  old.get("name"), "severe", logger);
 					}
 					db.saveLogIdea(today, old, current);
 				}
@@ -679,9 +722,6 @@ public class Crawler {
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
-		} finally {
-			db.close();
-			timer.terminate();
 		}
 	}
 	
