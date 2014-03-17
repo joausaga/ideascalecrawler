@@ -554,8 +554,9 @@ public class Crawler {
 			HashMap<String,Object> idea = ideas.get(i);
 			Integer ideaId = Integer.parseInt((String) idea.get("id"));
 			HashMap<String,String> existingIdea = db.ideaAlreadyInserted(ideaId);
-			if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
-				incrementers.add("Idea: " + existingIdea.get("name"));
+			if (!existingIdea.isEmpty())
+				if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
+					incrementers.add("Idea: " + existingIdea.get("name"));
 		}
 		
 		return incrementers;
@@ -575,7 +576,6 @@ public class Crawler {
 			Integer currentTWCounter = Integer.parseInt((String) current.get("twitter"));
 			Integer oldFBCounter = Integer.parseInt((String) old.get("facebook"));
 			Integer oldTWCounter = Integer.parseInt((String) old.get("twitter"));
-			//Log increment in social network counters
 			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
 				foundIncrementer = true;
 				if (type.equals("idea")) {
@@ -583,14 +583,18 @@ public class Crawler {
 						if ((Integer) current.get("score") < 
 							Integer.parseInt(old.get("score")))
 							Util.printMessage("There are less votes than before. " +
-											  "Idea: " + old.get("name"), 
+											  "Idea: " + old.get("url") + ". " +
+											  "Before: " + old.get("score") +
+											  " - Now: " + current.get("score"), 
 											  "severe", logger);
 					}
 					if (current.get("comments") != null && old.get("comments") != null) {
 						if ((Integer) current.get("comments") < 
 							Integer.parseInt(old.get("comments")))
 							Util.printMessage("There are less comments than before. " +
-											  "Idea: " + old.get("name"), 
+											  "Idea: " + old.get("url") + ". " +
+											  "Before: " + old.get("comments") +
+											  " - Now: " + current.get("comments"), 
 											  "severe", logger);
 					}
 					db.saveLogIdea(today, old, current);
@@ -600,21 +604,27 @@ public class Crawler {
 						if (Integer.parseInt((String)current.get("votes")) < 
 							Integer.parseInt(old.get("votes")))
 							Util.printMessage("There are less votes than before. " +
-											  "Community: " + old.get("name"), 
+											  "Community: " + old.get("url") + ". " +
+											  "Before: " + old.get("votes") +
+											  " - Now: " + current.get("votes"), 
 											  "severe", logger);
 					}
 					if (current.get("comments") != null && old.get("comments") != null) {
 						if (Integer.parseInt((String)current.get("comments")) < 
 							Integer.parseInt(old.get("comments")))
 							Util.printMessage("There are less comments than before. " +
-											  "Community: " + old.get("name"), 
+											  "Community: " + old.get("url") + ". " +
+											  "Before: " + old.get("comments") +
+											  " - Now: " + current.get("comments"), 
 											  "severe", logger);
 					}
 					if (current.get("ideas") != null && old.get("ideas") != null) {
 						if (Integer.parseInt((String)current.get("ideas")) < 
 							Integer.parseInt(old.get("ideas")))
 							Util.printMessage("There are less ideas than before. " +
-											  "Community: " + old.get("name"), 
+											  "Community: " + old.get("url") + ". " +
+											  "Before: " + old.get("ideas") +
+											  " - Now: " + current.get("ideas"), 
 											  "severe", logger);
 					}
 					db.saveLogCommunity(today, old, current);

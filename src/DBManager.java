@@ -735,6 +735,7 @@ public class DBManager {
 			existingIdea.put("twitter", resultSet.getString("twitter"));
 			existingIdea.put("score", resultSet.getString("votes"));
 			existingIdea.put("comments", resultSet.getString("comments"));
+			existingIdea.put("url", resultSet.getString("url"));
 		}
 		
 		resultSet.close();

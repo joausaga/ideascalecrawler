@@ -41,15 +41,20 @@ public class TwitterApp {
 		HttpResponse response = null;
 		
 		long now = System.currentTimeMillis();
-		long waitingTime = (limitReset-now)/60000;
+		long waitingTime = limitReset-now;
 		Util.printMessage("API request limit reached, we have to wait " + 
-			    		  waitingTime + " minutes for the next time window", 
+			    		  (waitingTime/60000) + " minutes for the next time window", 
 			    		  "info", logger);
-		Thread.sleep(limitReset-now);
-		response = doRequest(httpGet);
-		while (remainingRequests == 0) {
-			System.out.println("Still banned.");
-			Thread.sleep(60000);
+		if (waitingTime > 0) {
+			Thread.sleep(waitingTime);
+			response = doRequest(httpGet);
+			while (remainingRequests == 0) {
+				System.out.println("Still banned.");
+				Thread.sleep(60000);
+				response = doRequest(httpGet);
+			}
+		}
+		else {
 			response = doRequest(httpGet);
 		}
 		
