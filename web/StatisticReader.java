@@ -158,7 +158,7 @@ public class StatisticReader extends HTMLReader {
 	throws Exception {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
-		String fullURL = communityURL+ideaURLEncoded; //"http://projectfortnight.ideascale.com/a/dtd/Chorus/38327-26872";
+		String fullURL = communityURL+ideaURLEncoded; 
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -209,13 +209,13 @@ public class StatisticReader extends HTMLReader {
 		}
 		
 		//Get score
-		Element scoreElem = doc.getElementsByAttributeValueMatching("title", "current score").first();
+		Element scoreElem = doc.getElementsByClass("vote-number").first();
 		if (scoreElem != null)
 			statistics.put("score", Integer.parseInt(scoreElem.text()));
 		else
 			statistics.put("score", 0);
 		
-		//Get vote counter and votes meta-info
+		//Get votes meta-info
 		Element voteElem = doc.getElementById("vote-activity-list");
 		if (voteElem != null) {
 			ArrayList<HashMap<String,String>> votesMeta = new ArrayList<HashMap<String,String>>();
