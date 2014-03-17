@@ -34,6 +34,7 @@ public class Crawler {
 	private static Scanner user_input = null;
 	private final static String IDEASCALE_BASE_URL = "https://ideascale.com/index/";
 	private static final String EXECUTIONFILE = "running.lck";
+	private static final String ERRORFILE = "error.lck";
 	
 	public static void init() {
 		commInfoReader = new CommunityInfoReader();
@@ -130,7 +131,7 @@ public class Crawler {
 			System.out.println("2 - for continuing with a previous stopped synchronization process");
 			String opSync = user_input.next();
 			if (opSync.equals("1") || opSync.equals("2")) {
-				syncActiveCommunitiesInfo(opSync);
+				syncActiveCommunitiesInfo(Integer.parseInt(option),opSync);
 				exit();
 			}
 			else {
@@ -144,7 +145,7 @@ public class Crawler {
 			exit();
 		}
 		else if(option.equals("5")) {
-			syncActiveCommunitiesInfo("1");
+			syncActiveCommunitiesInfo(Integer.parseInt(option),"1");
 			updateTweetsMetrics();
 			exit();
 		}
@@ -167,7 +168,7 @@ public class Crawler {
 			else if (op == 3) {
 				if (args.length == 3) {
 					createExecutionFile();
-					syncActiveCommunitiesInfo(args[2]);
+					syncActiveCommunitiesInfo(op, args[2]);
 					removeExecutionFile();
 					exit();
 				}
@@ -200,7 +201,7 @@ public class Crawler {
 			}
 			else if(op == 5) {
 				createExecutionFile();
-				syncActiveCommunitiesInfo("1");
+				syncActiveCommunitiesInfo(op, "1");
 				updateTweetsMetrics();
 				removeExecutionFile();
 				exit();
@@ -241,6 +242,19 @@ public class Crawler {
 		}
 		else {
 			Util.printMessage("Execution file does not exist","severe",logger);
+		}
+	}
+	
+	private static void createErrorFile() {
+		File file = new File(ERRORFILE);
+		 
+		try {
+			if (!file.createNewFile()) {
+				Util.printMessage("Cannot create the error file","severe",logger);
+				System.exit(1);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -410,6 +424,7 @@ public class Crawler {
 			catch(Exception e) {
 				e.printStackTrace();
 				logger.log(Level.SEVERE,e.getMessage(),e);
+				createErrorFile();
 			}
 		}
 		
@@ -419,7 +434,7 @@ public class Crawler {
 	/*
 	 * Synchronize the twitter counters and ideas of active communities
 	 * */
-	private static void syncActiveCommunitiesInfo(String opSync) {
+	private static void syncActiveCommunitiesInfo(Integer op, String opSync) {
 		long startingTime = 0;
 		ArrayList<HashMap<String, String>> activeCommunities;
 		Calendar cal = Calendar.getInstance();
@@ -484,9 +499,11 @@ public class Crawler {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
+			createErrorFile();
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
+			createErrorFile();
 		}
 	}
 	
@@ -729,9 +746,11 @@ public class Crawler {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
+			createErrorFile();
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
+			createErrorFile();
 		}
 	}
 	
