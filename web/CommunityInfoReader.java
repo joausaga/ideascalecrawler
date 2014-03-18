@@ -165,7 +165,7 @@ public class CommunityInfoReader extends HTMLReader {
 									idIdeaDB = Integer.parseInt(existingIdea.get("id"));
 								if (idIdeaDB != -1) {
 									//Comments
-									if ((Integer) ideaStats.get("comments") > 0) {
+									if (ideaStats.containsKey("comments-meta")) {
 										ArrayList<HashMap<String,String>> commentsMeta = 
 										(ArrayList<HashMap<String, String>>) ideaStats.get("comments-meta");
 										for (HashMap<String,String> comment : commentsMeta) {
@@ -175,7 +175,7 @@ public class CommunityInfoReader extends HTMLReader {
 										}
 									}
 									//Votes
-									if ((Integer) ideaStats.get("score") > 0) {
+									if (ideaStats.containsKey("votes-meta")) {
 										ArrayList<HashMap<String,String>> votesMeta = 
 										(ArrayList<HashMap<String, String>>) ideaStats.get("votes-meta");
 										for (HashMap<String,String> vote : votesMeta)
