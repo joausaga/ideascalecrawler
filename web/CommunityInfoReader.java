@@ -180,7 +180,7 @@ public class CommunityInfoReader extends HTMLReader {
 										(ArrayList<HashMap<String, String>>) ideaStats.get("comments-meta");
 										for (HashMap<String,String> comment : commentsMeta) {
 											Integer commentId = Integer.parseInt(comment.get("id"));
-											if (!db.commentAlreadyExisting(commentId, Integer.parseInt(ideaId)))
+											if (!db.commentAlreadyExisting(commentId, idIdeaDB))
 												db.insertComment(comment, idIdeaDB, today);
 										}
 									}

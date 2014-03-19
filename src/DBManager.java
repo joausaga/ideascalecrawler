@@ -990,7 +990,7 @@ public class DBManager {
 		preparedStatement.setString(2, currentTab);
 		preparedStatement.setInt(3, currentPage);
 		preparedStatement.setInt(4, communityId);
-		preparedStatement.setInt(4, observation);
+		preparedStatement.setInt(5, observation);
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
