@@ -474,6 +474,27 @@ public class DBManager {
 		return existsComment; 
 	}
 	
+	public boolean voteAlreadyExisting(Integer idAuthor, String nameAuthor, Integer idIdea) 
+	throws SQLException {
+		Boolean existsVote = false;
+		
+		preparedStatement = connection.prepareStatement("SELECT * " +
+				  										"FROM votes " +
+				  										"WHERE idea_id = ? " +
+				  										"AND author_id = ? AND " +
+				  										"author_name = ?");
+		preparedStatement.setInt(1, idIdea);
+		preparedStatement.setInt(2, idAuthor);
+		preparedStatement.setString(3, nameAuthor);
+		resultSet = preparedStatement.executeQuery();
+		existsVote = resultSet.first();
+		
+		resultSet.close();
+		preparedStatement.close();
+		
+		return existsVote; 
+	}
+	
 	public void insertComment(HashMap<String,String> comment, Integer idIdea, 
 							  Date storeDT) 
 	throws SQLException {
@@ -618,8 +639,8 @@ public class DBManager {
 				"(ideascale_id, title, description, " +
 				"creation_datetime, tags, author_name, " +
 				"community_id, twitter, facebook, url, score, comments, " +
-				"similar_to, author_id, status, considered) " +
-				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"similar_to, author_id, status, considered, page, list_pos) " +
+				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, idIdea);
 		preparedStatement.setString(2, (String) idea.get("title"));
 		if (idea.get("description") != null)
@@ -682,6 +703,8 @@ public class DBManager {
 			preparedStatement.setNull(15, java.sql.Types.NULL);
 			preparedStatement.setBoolean(16, false);
 		}
+		preparedStatement.setInt(17, (Integer) idea.get("page"));
+		preparedStatement.setInt(18, (Integer) idea.get("list_pos"));
 		
 		preparedStatement.executeUpdate();
 		
@@ -694,7 +717,7 @@ public class DBManager {
 				"UPDATE ideas SET " +
 				"twitter = ?, facebook = ?, score = ?, " +
 				"comments = ?, similar_to = ?, status = ?, author_name = ?, " +
-				"considered = ? " +
+				"considered = ?, page = ?, list_pos = ? " +
 				"WHERE id = ?");
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
@@ -733,8 +756,24 @@ public class DBManager {
 			preparedStatement.setString(7, (String) idea.get("author-name"));
 		else
 			preparedStatement.setNull(7, java.sql.Types.NULL);
+		preparedStatement.setInt(9, (Integer) idea.get("page"));
+		preparedStatement.setInt(10, (Integer) idea.get("list_pos"));
+		
+		preparedStatement.setInt(11, idIdea);
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
 	
-		preparedStatement.setInt(9, idIdea);
+	public void updateIdeaPos(Integer page, Integer listPos, Integer idIdea) 
+	throws SQLException { 
+		preparedStatement = connection.prepareStatement(
+							"UPDATE ideas SET " +
+							"page = ?, list_pos = ? " +
+							"WHERE id = ?");
+		preparedStatement.setInt(1, page);
+		preparedStatement.setInt(2, listPos);
+		preparedStatement.setInt(3, idIdea);
+		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -755,6 +794,8 @@ public class DBManager {
 			existingIdea.put("score", resultSet.getString("score"));
 			existingIdea.put("comments", resultSet.getString("comments"));
 			existingIdea.put("url", resultSet.getString("url"));
+			existingIdea.put("page", resultSet.getString("page"));
+			existingIdea.put("list_pos", resultSet.getString("list_pos"));
 		}
 		
 		resultSet.close();

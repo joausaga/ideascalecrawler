@@ -100,17 +100,16 @@ public class CommunityInfoReader extends HTMLReader {
 		boolean lastPage;
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		Integer idIdeaDB = -1;
+		Integer listPos;
 		
 		Util.printMessage("Getting community's ideas","info",logger);
 		for (HashMap<String,String> tab : tabs) {
 			String currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
 			String page = getUrlContent(Util.toURI(currentPage));
 			lastPage = false;
-			
+			listPos = 0;
 			Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
-			
 			doc = Jsoup.parse(page);
-			
 			db.insertSyncProcess(communityURL, tab.get("url"), pageNum, communityId, observation);
 			while (!lastPage) {
 				Element ideasList = doc.getElementById("ideas");
@@ -157,6 +156,8 @@ public class CommunityInfoReader extends HTMLReader {
 								else {
 									ideaStats.put("status", null);
 								}
+								ideaStats.put("page", pageNum);
+								ideaStats.put("list_pos", listPos);
 								//Update/Insert Idea
 								HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
 								if (existingIdea.isEmpty()) {
@@ -188,8 +189,12 @@ public class CommunityInfoReader extends HTMLReader {
 									if (ideaStats.containsKey("votes-meta")) {
 										ArrayList<HashMap<String,String>> votesMeta = 
 										(ArrayList<HashMap<String, String>>) ideaStats.get("votes-meta");
-										for (HashMap<String,String> vote : votesMeta)
-											db.insertVote(vote, idIdeaDB, today);
+										for (HashMap<String,String> vote : votesMeta) {
+											Integer authorId = Integer.parseInt(vote.get("author-id"));
+											String authorName = vote.get("author-name");
+											if (!db.voteAlreadyExisting(authorId, authorName, idIdeaDB))
+												db.insertVote(vote, idIdeaDB, today);
+										}
 									}
 								}
 								else {
@@ -205,10 +210,27 @@ public class CommunityInfoReader extends HTMLReader {
 							throw new Exception("Couldn't find idea's content");
 						}
 					}
+					else {
+						//If an idea was already found and but this time we see 
+						//it has a better position, then we update its position
+						HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
+						idIdeaDB = Integer.parseInt(existingIdea.get("id"));
+						Integer existingPageNum = Integer.parseInt(existingIdea.get("page"));
+						Integer existingListPos = Integer.parseInt(existingIdea.get("list_pos"));
+						if (pageNum < existingPageNum) {
+							db.updateIdeaPos(pageNum,listPos,idIdeaDB);
+						}
+						else if (pageNum == existingPageNum && 
+								 listPos < existingListPos) {
+							db.updateIdeaPos(pageNum,listPos,idIdeaDB);
+						}
+					}
+					listPos += 1;
 				}
 				lastPage = isLastPage(doc);
 				if (!lastPage) {
 					pageNum += 1;
+					listPos = 0;
 					currentPage = communityURL+tab.get("url")+SUFFIX+pageNum.toString();
 					Util.printMessage("Getting ideas of the page " + currentPage,"info",logger);
 					page = getUrlContent(Util.toURI(currentPage));
@@ -260,7 +282,7 @@ public class CommunityInfoReader extends HTMLReader {
 	
 	private boolean isNewIdea(String idIdea, ArrayList<HashMap<String,Object>> elems) {
 		for (HashMap<String,Object> elem : elems) {
-			if (elem.get("id") == idIdea)
+			if (elem.get("id").equals(idIdea))
 				return false;
 		}
 		return true;
