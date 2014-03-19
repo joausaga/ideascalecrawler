@@ -409,7 +409,7 @@ public class Crawler {
 				Date opDuration = timeFormat.parse(duration.get("hours") + ":" + 
 												   duration.get("minutes")  + ":" + 
 												   duration.get("seconds"));
-				db.registerOperation(cal.getTime(), "Syncronization of communities: " + letter, opDuration);
+				db.registerOperation(cal.getTime(), "Syncronization of communities: " + letter, opDuration,-1);
 				
 				Util.printMessage("Syncronization of communities "+ letter +
 							 	  " has finished with a duration of: " + 
@@ -439,22 +439,25 @@ public class Crawler {
 		ArrayList<HashMap<String, String>> activeCommunities;
 		Calendar cal = Calendar.getInstance();
 		Date today = cal.getTime();
-		ArrayList<String> incrementers = new ArrayList<String>();
-		ArrayList<String> currentIncrementers;
+		Integer observation;
 		
 		try {
-			//Before starting check whether exists unfinished processes and finishing them
-			HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
-			if (!unfinishedProcess.isEmpty()) {
-				currentIncrementers = resumeUnfinishedProcess(unfinishedProcess, today);
-				for (String incrementer : currentIncrementers)
-					incrementers.add(incrementer);
-				finishCommunitySync(startingTime, (String) unfinishedProcess.get("community_url"),
-								    unfinishedProcess.get("community_id").toString(), today, 
-								    currentIncrementers);
-			}
-			if (opSync.equals("1"))
+			if (opSync.equals("1")) {
 				db.resetSyncFlag();
+				db.cleanSyncProgressTable();
+				observation = db.getLastObservationId() + 1;
+			}
+			else {
+				observation = db.getLastObservationId();
+				//Before starting check whether exists unfinished processes and finishing them
+				HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
+				if (!unfinishedProcess.isEmpty()) {
+					resumeUnfinishedProcess(unfinishedProcess, today);
+					finishCommunitySync(startingTime, (String) unfinishedProcess.get("community_url"),
+									    unfinishedProcess.get("community_id").toString(), today,
+									    observation);
+				}
+			}
 			activeCommunities = db.getActiveCommunities();
 			if (activeCommunities.size() == 0) {
 				Util.printMessage("All communities are already synchronized.","info",logger);
@@ -474,28 +477,18 @@ public class Crawler {
     					  url.substring(colon);
     			}				
 				//1: Sync Community Ideas and Social Network Statistics
-				currentIncrementers = syncCommunitySnStatsAndIdeas(activeCommunity,today);
-				for (String incrementer : currentIncrementers)
-					incrementers.add(incrementer);
+				syncCommunitySnStatsAndIdeas(activeCommunity,observation);
 				//2: Save Community Tweets
 				saveCommunityTweets(activeCommunity);
 				//3: Save Community Ideas Tweets
 				saveCommunityIdeasTweets(activeCommunity);
 				//Finishing synchronization
 				finishCommunitySync(startingTime,activeCommunity.get("name"),
-									activeCommunity.get("id"), today, currentIncrementers);
+									activeCommunity.get("id"), today, observation);
 				//Wait for a moment to avoid being banned
 				double rand = Math.random() * 5;		        			
     			Thread.sleep((long) (rand * 1000)); 
-			}
-			if (!incrementers.isEmpty()) {
-				Util.printMessage(incrementers.size() + " communities/ideas had " +
-				 		  		  "incremented their social network counters.", "info",logger);
-				Util.printMessage("They are: ","info",logger);
-				for (String incr : incrementers) {
-					Util.printMessage(incr,"info",logger);
-				}
-			}			
+			}		
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);
@@ -509,7 +502,7 @@ public class Crawler {
 	
 	private static void finishCommunitySync(long startingTime, String communityName, 
 											String communityId, Date today,
-											ArrayList<String> incrementers) 
+											Integer observation) 
 	throws ParseException, SQLException {
 		DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 		HashMap<String,String> duration = calcOpDuration(startingTime);
@@ -527,64 +520,36 @@ public class Crawler {
 		String opMsg = "Synchronization of the ideas of the community: " + 
 						communityName;
 		
-		for (String incrementer : incrementers)
-			opMsg += incrementer + "has incremented its social network counters\n";
-		
 		db.updateSyncFlag(communityId);				
-		db.registerOperation(today, opMsg, opDuration);	
+		db.registerOperation(today, opMsg, opDuration, observation);	
 	}
 	
-	private static ArrayList<String> resumeUnfinishedProcess(HashMap<String,Object> unfinishedProcess,
+	private static void resumeUnfinishedProcess(HashMap<String,Object> unfinishedProcess,
 															 Date today) 
 	throws Exception {
-		ArrayList<String> incrementers = new ArrayList<String>();
-		ArrayList<HashMap<String,Object>> ideas = commInfoReader.resumeSyncProcess(unfinishedProcess, db);
-		for (int i = 0; i < ideas.size(); i++) {
-			HashMap<String,Object> idea = ideas.get(i);
-			Integer ideaId = Integer.parseInt((String) idea.get("id"));
-			HashMap<String,String> existingIdea = db.ideaAlreadyInserted(ideaId);
-			if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
-				incrementers.add("Idea: " + existingIdea.get("name"));
-		}
-		return incrementers;
+		commInfoReader.resumeSyncProcess(unfinishedProcess, db);
 	}
 	
-	private static ArrayList<String> syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
-										  			   			  Date today) 
+	private static void syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
+										  			 Integer observation) 
 	throws Exception 
 	{
 		HashMap<String,Object> communityStats = null;
-		ArrayList<String> incrementers = new ArrayList<String>();
 		
 		String url = community.get("url");
 		String communityId = community.get("id");
 		
 		communityStats = commInfoReader.syncCommunityStats(communityId, url, db);
-		if (checkIncrementSNCounters(today,community,communityStats,"community"))
-			incrementers.add("Community: " + community.get("name"));
+		checkIncrementSNCounters(observation,community,communityStats);
 		
 		ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) communityStats.get("tabs");
-		
-		ArrayList<HashMap<String,Object>> ideas = commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db);
-		
-		for (int i = 0; i < ideas.size(); i++) {
-			HashMap<String,Object> idea = ideas.get(i);
-			Integer ideaId = Integer.parseInt((String) idea.get("id"));
-			HashMap<String,String> existingIdea = db.ideaAlreadyInserted(ideaId);
-			if (!existingIdea.isEmpty())
-				if (checkIncrementSNCounters(today,existingIdea,idea,"idea"))
-					incrementers.add("Idea: " + existingIdea.get("name"));
-		}
-		
-		return incrementers;
+		commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db, observation);
 	}
 	
-	private static boolean checkIncrementSNCounters(Date today, 
-													HashMap<String,String> old,
-													HashMap<String,Object> current,
-													String type) 
+	private static void checkIncrementSNCounters(Integer observation, 
+												 HashMap<String,String> old,
+												 HashMap<String,Object> current) 
 	throws SQLException {
-		boolean foundIncrementer = false;
 		
 		if (current.get("facebook") != null && current.get("twitter") != null &&
 			old.get("facebook") != null && old.get("twitter") != null) 
@@ -594,61 +559,41 @@ public class Crawler {
 			Integer oldFBCounter = Integer.parseInt((String) old.get("facebook"));
 			Integer oldTWCounter = Integer.parseInt((String) old.get("twitter"));
 			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
-				foundIncrementer = true;
-				if (type.equals("idea")) {
-					if (current.get("comments") != null && old.get("comments") != null) {
-						if ((Integer) current.get("comments") < 
-							Integer.parseInt(old.get("comments")))
-							Util.printMessage("There are less comments than before. " +
-											  "Idea: " + old.get("url") + ". " +
-											  "Before: " + old.get("comments") +
-											  " - Now: " + current.get("comments"), 
-											  "severe", logger);
-					}
-					db.saveLogIdea(today, old, current);
+				if (current.get("votes") != null && old.get("votes") != null) {
+					if (Integer.parseInt((String)current.get("votes")) < 
+						Integer.parseInt(old.get("votes")))
+						Util.printMessage("There are less votes than before. " +
+										  "Community: " + old.get("url") + ". " +
+										  "Before: " + old.get("votes") +
+										  " - Now: " + current.get("votes"), 
+										  "severe", logger);
 				}
-				else {
-					if (current.get("votes") != null && old.get("votes") != null) {
-						if (Integer.parseInt((String)current.get("votes")) < 
-							Integer.parseInt(old.get("votes")))
-							Util.printMessage("There are less votes than before. " +
-											  "Community: " + old.get("url") + ". " +
-											  "Before: " + old.get("votes") +
-											  " - Now: " + current.get("votes"), 
-											  "severe", logger);
-					}
-					if (current.get("comments") != null && old.get("comments") != null) {
-						if (Integer.parseInt((String)current.get("comments")) < 
-							Integer.parseInt(old.get("comments")))
-							Util.printMessage("There are less comments than before. " +
-											  "Community: " + old.get("url") + ". " +
-											  "Before: " + old.get("comments") +
-											  " - Now: " + current.get("comments"), 
-											  "severe", logger);
-					}
-					if (current.get("ideas") != null && old.get("ideas") != null) {
-						if (Integer.parseInt((String)current.get("ideas")) < 
-							Integer.parseInt(old.get("ideas")))
-							Util.printMessage("There are less ideas than before. " +
-											  "Community: " + old.get("url") + ". " +
-											  "Before: " + old.get("ideas") +
-											  " - Now: " + current.get("ideas"), 
-											  "severe", logger);
-					}
-					db.saveLogCommunity(today, old, current);
+				if (current.get("comments") != null && old.get("comments") != null) {
+					if (Integer.parseInt((String)current.get("comments")) < 
+						Integer.parseInt(old.get("comments")))
+						Util.printMessage("There are less comments than before. " +
+										  "Community: " + old.get("url") + ". " +
+										  "Before: " + old.get("comments") +
+										  " - Now: " + current.get("comments"), 
+										  "severe", logger);
 				}
+				if (current.get("ideas") != null && old.get("ideas") != null) {
+					if (Integer.parseInt((String)current.get("ideas")) < 
+						Integer.parseInt(old.get("ideas")))
+						Util.printMessage("There are less ideas than before. " +
+										  "Community: " + old.get("url") + ". " +
+										  "Before: " + old.get("ideas") +
+										  " - Now: " + current.get("ideas"), 
+										  "severe", logger);
+				}
+				db.saveLogCommunity(observation, old, current);
 			}
 		}
 		else {
-			if (type == "idea")
-				Util.printMessage("Some of the SN counters of the idea: " + 
-								   old.get("name") + " are null", "info", logger);
-			else
-				Util.printMessage("Some of the SN counters of the community " + 
-						   		   old.get("name") + " are null", "info", logger);
+			Util.printMessage("Some of the SN counters of the community " + 
+						   	  old.get("name") + " are null", "info", logger);
 		}
 		
-		return foundIncrementer;
 	}
 	
 	private static void saveCommunityTweets(HashMap<String,String> community) 
@@ -733,7 +678,7 @@ public class Crawler {
 			Date opDuration = timeFormat.parse(duration.get("hours") + ":" + 
 					   						   duration.get("minutes")  + ":" + 
 					   						   duration.get("seconds"));
-			db.registerOperation(today, "Updating tweet metrics", opDuration);
+			db.registerOperation(today, "Updating tweet metrics", opDuration,-1);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.log(Level.SEVERE,e.getMessage(),e);

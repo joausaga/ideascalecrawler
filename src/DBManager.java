@@ -788,16 +788,20 @@ public class DBManager {
 		return ideas;
 	}
 	
-	public void registerOperation(Date date, String operation, Date duration) 
+	public void registerOperation(Date date, String operation, Date duration,
+								  Integer observation) 
 	throws SQLException {
 		preparedStatement = connection.prepareStatement("INSERT INTO audit " +
-														"(date, operation, duration) " +
-														"values (?, ?, ?)");
+														"(date, operation, duration, " +
+														"observation) " +
+														"values (?, ?, ?, ?)");
 		java.sql.Timestamp opDateTime = new java.sql.Timestamp(date.getTime());
 		preparedStatement.setTimestamp(1, opDateTime);
 		preparedStatement.setString(2, operation);
 		java.sql.Time opDuration = new java.sql.Time(duration.getTime());
 		preparedStatement.setTime(3, opDuration);
+		preparedStatement.setInt(4, observation);
+		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -819,12 +823,12 @@ public class DBManager {
 		preparedStatement.close();
 	}
 	
-	public void saveLogCommunity(Date currentDate,
+	public void saveLogCommunity(Integer observation,
 								 HashMap<String,String> community, 
 								 HashMap<String,Object> newStats) 
 	throws SQLException {
 		preparedStatement = connection.prepareStatement("INSERT INTO log_communities " +
-														"(date, community_id, name," +
+														"(observation, community_id, name," +
 														"old_facebook, new_facebook," +
 														"old_twitter, new_twitter," +
 														"old_members, new_members," +
@@ -833,8 +837,7 @@ public class DBManager {
 														"old_votes, new_votes) " +
 														"values (?, ?, ?, ?, ?, ?, " +
 														"?, ?, ?, ?, ?, ?, ?, ?, ?)");
-		java.sql.Date date = new java.sql.Date(currentDate.getTime());
-		preparedStatement.setDate(1, date);
+		preparedStatement.setInt(1, observation);
 		preparedStatement.setString(2, community.get("id"));
 		preparedStatement.setString(3, community.get("name"));
 		preparedStatement.setInt(4, Integer.parseInt(community.get("facebook")));
@@ -853,18 +856,17 @@ public class DBManager {
 		preparedStatement.close();
 	}
 	
-	public void saveLogIdea(Date currentDate, HashMap<String,String> existingIdea, 
+	public void saveLogIdea(Integer observation, HashMap<String,String> existingIdea, 
 			 				HashMap<String,Object> newIdea) 
 	throws SQLException {
 		preparedStatement = connection.prepareStatement("INSERT INTO log_ideas " +
-														"(date, idea_id, name," +
+														"(observation, idea_id, name," +
 														"old_facebook, new_facebook," +
 														"old_twitter, new_twitter," +
 														"old_comments, new_comments) " +
 														"values (?, ?, ?, ?, ?, ?, " +
 														"?, ?, ?)");
-		java.sql.Date date = new java.sql.Date(currentDate.getTime());
-		preparedStatement.setDate(1, date);
+		preparedStatement.setInt(1, observation);
 		preparedStatement.setString(2, existingIdea.get("id"));
 		preparedStatement.setString(3, existingIdea.get("name"));
 		preparedStatement.setInt(4, Integer.parseInt(existingIdea.get("facebook")));
@@ -976,16 +978,19 @@ public class DBManager {
 	}
 	
 	public void insertSyncProcess(String communityURL, String currentTab, 
-								  Integer currentPage, Integer communityId) 
+								  Integer currentPage, Integer communityId,
+								  Integer observation) 
 	throws SQLException {
 		preparedStatement = connection.prepareStatement("INSERT INTO sync_progress " +
 														"(community_url, current_tab, " +
-														"current_page, community_id) " +
-														"values (?, ?, ?, ?)");
+														"current_page, community_id, " +
+														"observation) " +
+														"values (?, ?, ?, ?, ?)");
 		preparedStatement.setString(1, communityURL);
 		preparedStatement.setString(2, currentTab);
 		preparedStatement.setInt(3, currentPage);
 		preparedStatement.setInt(4, communityId);
+		preparedStatement.setInt(4, observation);
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
@@ -1003,6 +1008,7 @@ public class DBManager {
 			unfinishedProcess.put("community_url", resultSet.getString("community_url"));
 			unfinishedProcess.put("current_tab", resultSet.getString("current_tab"));
 			unfinishedProcess.put("current_page", resultSet.getInt("current_page"));
+			unfinishedProcess.put("observation", resultSet.getInt("observation"));
 		}
 		
 		preparedStatement.close();
@@ -1027,5 +1033,22 @@ public class DBManager {
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
+	}
+	
+	public Integer getLastObservationId() throws SQLException {
+		Integer observation;
+		
+		preparedStatement = connection.prepareStatement("SELECT observation " +
+														"FROM audit");
+		resultSet = preparedStatement.executeQuery();
+		if (resultSet.first())
+			observation = resultSet.getInt("observation");
+		else
+			observation = 0;
+		
+		preparedStatement.close();
+		resultSet.close();
+		
+		return observation;
 	}
 }

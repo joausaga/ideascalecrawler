@@ -59,6 +59,7 @@ public class CommunityInfoReader extends HTMLReader {
 		String communityURL = (String) process.get("community_url");
 		Integer communityId = (Integer) process.get("community_id");
 		Integer currentPage = (Integer) process.get("current_page");
+		Integer observation = (Integer) process.get("observation");
 		String content = getUrlContent(Util.toURI(communityURL));
 		Document doc = Jsoup.parse(content);
 		String currentTab = (String) process.get("current_tab");
@@ -71,14 +72,18 @@ public class CommunityInfoReader extends HTMLReader {
 				tabs.remove(tab);
 		}
 		
-		ArrayList<HashMap<String,Object>> info = syncIdeas(communityURL,communityId,tabs,currentPage, db);
+		ArrayList<HashMap<String,Object>> info = syncIdeas(communityURL,
+														   communityId,tabs,
+														   currentPage, db,
+														   observation);
 		
 		return info;
 	}
 	
 	public ArrayList<HashMap<String,Object>> syncIdeas(String communityURL, Integer communityId,
 						  							    ArrayList<HashMap<String,String>> tabs, 
-						  							    Integer currentPageNum, DBManager db) 
+						  							    Integer currentPageNum, DBManager db,
+						  							    Integer observation) 
 	throws Exception 
 	{
 		Integer pageNum = currentPageNum;
@@ -106,7 +111,7 @@ public class CommunityInfoReader extends HTMLReader {
 			
 			doc = Jsoup.parse(page);
 			
-			db.insertSyncProcess(communityURL, tab.get("url"), pageNum, communityId);
+			db.insertSyncProcess(communityURL, tab.get("url"), pageNum, communityId, observation);
 			while (!lastPage) {
 				Element ideasList = doc.getElementById("ideas");
 				for (Element ideaList : ideasList.children()) {
@@ -154,15 +159,20 @@ public class CommunityInfoReader extends HTMLReader {
 								}
 								//Update/Insert Idea
 								HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
-								if (existingIdea.isEmpty())
+								if (existingIdea.isEmpty()) {
 									db.insertCommunityIdea(ideaStats,communityId.toString());
-								else
-									db.updateCommunityIdea(ideaStats, Integer.parseInt(ideaId));
+								}
+								else {
+									db.updateCommunityIdea(ideaStats, Integer.parseInt(existingIdea.get("id")));
+									checkIncrementSNCounters(existingIdea,ideaStats,observation,db);
+								}
 								//Save Comments and Votes
-								if (existingIdea.isEmpty())
+								if (existingIdea.isEmpty()) {
 									idIdeaDB = db.getIdeaId(Integer.parseInt(ideaId));
-								else
+								}
+								else {
 									idIdeaDB = Integer.parseInt(existingIdea.get("id"));
+								}
 								if (idIdeaDB != -1) {
 									//Comments
 									if (ideaStats.containsKey("comments-meta")) {
@@ -215,6 +225,37 @@ public class CommunityInfoReader extends HTMLReader {
 		}
 		
 		return info;
+	}
+	
+	private static void checkIncrementSNCounters(HashMap<String,String> old,
+												 HashMap<String,Object> current,
+												 Integer observation,
+												 DBManager db) 
+	throws SQLException {
+		
+		if (current.get("facebook") != null && current.get("twitter") != null &&
+			old.get("facebook") != null && old.get("twitter") != null) 
+		{
+			Integer currentFBCounter = Integer.parseInt((String) current.get("facebook"));
+			Integer currentTWCounter = Integer.parseInt((String) current.get("twitter"));
+			Integer oldFBCounter = Integer.parseInt((String) old.get("facebook"));
+			Integer oldTWCounter = Integer.parseInt((String) old.get("twitter"));
+			if (currentFBCounter > oldFBCounter || currentTWCounter > oldTWCounter) {
+				if (current.get("comments") != null && old.get("comments") != null) {
+					if ((Integer) current.get("comments") < Integer.parseInt(old.get("comments")))
+					Util.printMessage("There are less comments than before. " +
+									  "Idea: " + old.get("url") + ". " +
+									  "Before: " + old.get("comments") +
+									  " - Now: " + current.get("comments"), 
+									  "severe", logger);
+					}
+				db.saveLogIdea(observation, old, current);
+			}
+		}
+		else {
+			Util.printMessage("Some of the SN counters of the idea: " + 
+							  old.get("name") + " are null", "info", logger);
+		}
 	}
 	
 	private boolean isNewIdea(String idIdea, ArrayList<HashMap<String,Object>> elems) {
