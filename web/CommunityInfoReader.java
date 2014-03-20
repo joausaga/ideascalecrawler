@@ -65,15 +65,18 @@ public class CommunityInfoReader extends HTMLReader {
 		String currentTab = (String) process.get("current_tab");
 		
 		ArrayList<HashMap<String,String>> tabs = statsReader.getTabsURL(doc);
+		ArrayList<HashMap<String,String>> remainingTabs = new ArrayList<HashMap<String,String>>();
+		boolean foundTab = false;
 		for (HashMap<String,String> tab : tabs) {
-			if (tab.get("url").equals(currentTab))
-				break;
-			else
-				tabs.remove(tab);
+			if (tab.get("url").equals(currentTab) || foundTab) {
+				foundTab = true;
+				remainingTabs.add(tab);
+			}
 		}
 		
 		ArrayList<HashMap<String,Object>> info = syncIdeas(communityURL,
-														   communityId,tabs,
+														   communityId,
+														   remainingTabs,
 														   currentPage, db,
 														   observation);
 		
