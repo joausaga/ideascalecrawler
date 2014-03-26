@@ -657,7 +657,7 @@ public class DBManager {
 		if (idea.get("tags") != null)
 			preparedStatement.setString(5, (String) idea.get("tags"));
 		else
-			preparedStatement.setNull(5, java.sql.Types.NULL);
+			preparedStatement.setString(5, "");
 		if (idea.get("author-name") != null)
 			preparedStatement.setString(6, (String) idea.get("author-name"));
 		else

@@ -452,10 +452,23 @@ public class Crawler {
 				//Before starting check whether exists unfinished processes and finishing them
 				HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
 				if (!unfinishedProcess.isEmpty()) {
+					startingTime = System.currentTimeMillis();
+					//1: Resume the unfinished process
 					resumeUnfinishedProcess(unfinishedProcess, today);
-					finishCommunitySync(startingTime, (String) unfinishedProcess.get("community_url"),
-									    unfinishedProcess.get("community_id").toString(), today,
+					HashMap<String,String> unfinishedCommunity = new HashMap<String,String>();
+					unfinishedCommunity.put("id", unfinishedProcess.get("community_id").toString());
+					unfinishedCommunity.put("url", unfinishedProcess.get("community_url").toString());
+					unfinishedCommunity.put("tab", unfinishedProcess.get("current_tab").toString());
+					//2: Save Tweets of unfinished community
+					saveCommunityTweets(unfinishedCommunity);
+					//3: Save Tweets of unfinished community ideas
+					saveCommunityIdeasTweets(unfinishedCommunity,observation);
+					//4: Finishing synchronization of the unfinished process
+					finishCommunitySync(startingTime, unfinishedCommunity.get("url"),
+									    unfinishedCommunity.get("id"), today,
 									    observation);
+					//5: Pause for a moment to avoid being banned
+					pause();
 				}
 			}
 			activeCommunities = db.getActiveCommunities();
@@ -481,13 +494,12 @@ public class Crawler {
 				//2: Save Community Tweets
 				saveCommunityTweets(activeCommunity);
 				//3: Save Community Ideas Tweets
-				saveCommunityIdeasTweets(activeCommunity);
-				//Finishing synchronization
+				saveCommunityIdeasTweets(activeCommunity,observation);
+				//4: Finishing synchronization
 				finishCommunitySync(startingTime,activeCommunity.get("name"),
 									activeCommunity.get("id"), today, observation);
-				//Wait for a moment to avoid being banned
-				double rand = Math.random() * 5;		        			
-    			Thread.sleep((long) (rand * 1000)); 
+				//5: Pause for a moment to avoid being banned
+				pause(); 
 			}		
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -610,17 +622,36 @@ public class Crawler {
 					db.insertCommunityTweets(tweet, idCommunity);
 			}
 		}
-		//ts.GetTweets("http://toadfororacle.ideascale.com");
 	}
 	
-	private static void saveCommunityIdeasTweets(HashMap<String,String> community) 
+	private static void saveCommunityIdeasTweets(HashMap<String,String> community,
+												 Integer observation) 
  	throws Exception 
  	{
 		String idCommunity = community.get("id");
 		ArrayList<HashMap<String,String>> ideas = db.getCommunityIdeas(idCommunity);
-		for (HashMap<String,String> idea : ideas) {
+		ArrayList<HashMap<String,String>> remainingIdeas = new ArrayList<HashMap<String,String>>();
+		
+		if (community.containsKey("tab")) {   //Finishing an unfinished process
+			String idUnSavedIdea = community.get("tab");
+			boolean found = false;
+			for (HashMap<String,String> idea : ideas) {
+				if (idea.get("id").equals(idUnSavedIdea) || found) {
+					found = true;
+					remainingIdeas.add(idea);
+				}
+			}
+		}
+		else {
+			remainingIdeas = ideas;
+		}
+		db.cleanSyncProgressTable();
+		for (HashMap<String,String> idea : remainingIdeas) {
 			String url = idea.get("url");
 			String idIdea = idea.get("id");
+			db.insertSyncProcess(url, idIdea, -1, 
+								Integer.parseInt(idCommunity), 
+								observation);
 			ArrayList<HashMap<String,Object>> tweets = ts.GetTweets(url);
 			if (tweets.size() > 0) {
 				for (HashMap<String,Object> tweet : tweets) {
@@ -630,6 +661,7 @@ public class Crawler {
 						db.insertTweetsIdea(tweet, idIdea);	
 				}
 			}
+			db.cleanSyncProgressTable();
 		}
 	}
 	
@@ -688,6 +720,12 @@ public class Crawler {
 			logger.log(Level.SEVERE,e.getMessage(),e);
 			createErrorFile();
 		}
+	}
+	
+	public static void pause() throws InterruptedException {
+		//Wait for a moment to avoid being banned
+		double rand = Math.random() * 5;		        			
+		Thread.sleep((long) (rand * 1000));
 	}
 	
 	/*public static void checkCommunitiesExistence(CommunityInfoReader commInfoReader,

@@ -54,31 +54,33 @@ public class CommunityInfoReader extends HTMLReader {
 	
 	public ArrayList<HashMap<String,Object>> resumeSyncProcess(HashMap<String,Object> process, DBManager db) 
 	throws Exception {
+		ArrayList<HashMap<String,Object>> info = null;
+		
 		Util.printMessage("Resuming a previous unfinished process","info",logger);
 		
 		String communityURL = (String) process.get("community_url");
 		Integer communityId = (Integer) process.get("community_id");
 		Integer currentPage = (Integer) process.get("current_page");
-		Integer observation = (Integer) process.get("observation");
-		String content = getUrlContent(Util.toURI(communityURL));
-		Document doc = Jsoup.parse(content);
-		String currentTab = (String) process.get("current_tab");
 		
-		ArrayList<HashMap<String,String>> tabs = statsReader.getTabsURL(doc);
-		ArrayList<HashMap<String,String>> remainingTabs = new ArrayList<HashMap<String,String>>();
-		boolean foundTab = false;
-		for (HashMap<String,String> tab : tabs) {
-			if (tab.get("url").equals(currentTab) || foundTab) {
-				foundTab = true;
-				remainingTabs.add(tab);
+		if (currentPage != -1) {
+			Integer observation = (Integer) process.get("observation");
+			String content = getUrlContent(Util.toURI(communityURL));
+			Document doc = Jsoup.parse(content);
+			String currentTab = (String) process.get("current_tab");
+			
+			ArrayList<HashMap<String,String>> tabs = statsReader.getTabsURL(doc);
+			ArrayList<HashMap<String,String>> remainingTabs = new ArrayList<HashMap<String,String>>();
+			boolean foundTab = false;
+			for (HashMap<String,String> tab : tabs) {
+				if (tab.get("url").equals(currentTab) || foundTab) {
+					foundTab = true;
+					remainingTabs.add(tab);
+				}
 			}
+			
+			info = syncIdeas(communityURL, communityId, remainingTabs, 
+							 currentPage, db, observation);
 		}
-		
-		ArrayList<HashMap<String,Object>> info = syncIdeas(communityURL,
-														   communityId,
-														   remainingTabs,
-														   currentPage, db,
-														   observation);
 		
 		return info;
 	}
