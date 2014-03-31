@@ -30,6 +30,8 @@ public class HTMLReader {
     private static final int HTTP_STATUS_OK = 200;
     
     private static final int HTTP_STATUS_NO_SERVICE = 503;
+    
+    private static final int HTTP_STATUS_NOT_FOUND = 404;
 	
     /**
      * Shared buffer used by {@link #getUrlContent(String)} when reading results
@@ -87,7 +89,8 @@ public class HTMLReader {
             
             // Check if server response is valid
             StatusLine status = response.getStatusLine();
-            while (status.getStatusCode() != HTTP_STATUS_OK) {
+            while (status.getStatusCode() != HTTP_STATUS_OK &&
+                   status.getStatusCode() != HTTP_STATUS_NOT_FOUND) {
             	Util.printMessage("Invalid response from server: " +
 		     	 			  	  status.toString() + 
 		     	 			  	  ". Trying again", "info", logger);
@@ -137,7 +140,8 @@ public class HTMLReader {
 		    
 		    // Check if server response is valid
 			StatusLine status = response.getStatusLine();
-			while (status.getStatusCode() != HTTP_STATUS_OK) {
+			while (status.getStatusCode() != HTTP_STATUS_OK &&
+                   status.getStatusCode() != HTTP_STATUS_NOT_FOUND) {
 				Util.printMessage("Invalid response from server: " +
        		     	 			  status.toString() + 
        		     	 			  ". Trying again", "info", logger);
@@ -159,7 +163,7 @@ public class HTMLReader {
 			}
 		
 			// Return result from buffered stream
-			    return new String(content.toByteArray());
+            return new String(content.toByteArray());
 		} catch (IOException e) {
 		    throw new Exception("Communication problems", e);
 		}

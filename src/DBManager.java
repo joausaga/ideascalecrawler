@@ -502,8 +502,9 @@ public class DBManager {
 														"(author_id, author_name, " +
 														"creation_datetime, description, " +
 														"ideascale_id, idea_id, " +
-														"store_datetime, parent_ideascale_id) " +
-														"values (?, ?, ?, ? , ?, ?, ?, ?)");
+														"store_datetime, parent_ideascale_id, " +
+														"author_type) " +
+														"values (?, ?, ?, ? , ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, Integer.parseInt(comment.get("author-id")));
 		preparedStatement.setString(2, comment.get("author-name"));
 		preparedStatement.setString(3, comment.get("date"));
@@ -513,9 +514,22 @@ public class DBManager {
 		java.sql.Timestamp storeDateTime = new java.sql.Timestamp(storeDT.getTime());				
 		preparedStatement.setTimestamp(7, storeDateTime);
 		preparedStatement.setInt(8, Integer.parseInt(comment.get("parent")));
+		preparedStatement.setString(9, comment.get("author-type"));
 		
 		preparedStatement.executeUpdate();
 	    preparedStatement.close();
+	}
+	
+	public void updateComment(HashMap<String,String> comment, Integer idComment) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE comments " +
+														"SET author_type = ? " +
+														"WHERE ideascale_id = ?");
+		preparedStatement.setString(1, comment.get("author-type"));
+		preparedStatement.setInt(2, idComment);
+		
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
 	}
 	
 	public void insertVote(HashMap<String,String> vote, Integer idIdea, Date storeDT) 
@@ -573,6 +587,40 @@ public class DBManager {
 		preparedStatement.close();
 		
 		return activeCommunities;
+	}
+	
+	public ArrayList<HashMap<String,String>> getCivicParticipationCommunities() 
+	throws SQLException 
+	{
+		ArrayList<HashMap<String,String>> cpCommunities = new ArrayList<HashMap<String,String>>();
+		
+		preparedStatement = connection.prepareStatement("SELECT id, name, url, " +
+														"facebook, twitter, " +
+														"ideas, comments, votes, " +
+														"members " +
+														"FROM communities " +
+			    										"WHERE orientation = ? " +
+			    										"ORDER BY ideas ASC");
+		preparedStatement.setString(1, "Civic Participation");
+		resultSet = preparedStatement.executeQuery();
+		while (resultSet.next()) {
+			HashMap<String,String> community = new HashMap<String,String>();
+			community.put("id", resultSet.getString("id"));
+			community.put("url", resultSet.getString("url"));
+			community.put("name", resultSet.getString("name"));
+			community.put("facebook", resultSet.getString("facebook"));
+			community.put("twitter", resultSet.getString("twitter"));
+			community.put("ideas", resultSet.getString("ideas"));
+			community.put("comments", resultSet.getString("comments"));
+			community.put("votes", resultSet.getString("votes"));
+			community.put("members", resultSet.getString("members"));
+			cpCommunities.add(community);
+		}
+		
+		resultSet.close();
+		preparedStatement.close();
+		
+		return cpCommunities;
 	}
 	
 	public void updateCommunityStats(HashMap<String,Object> stats, 

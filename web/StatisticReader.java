@@ -299,6 +299,15 @@ public class StatisticReader extends HTMLReader {
 			commentMeta.put("description", commentContent);
 			commentMeta.put("parent", parent);
 			commentsMeta.add(commentMeta);
+			
+			Element commenterVCard = comment.getElementsByAttributeValueMatching("class", "vcard").first();
+			String vCard = commenterVCard.attr("class");
+			if (vCard.contains("idea-submitter"))
+				commentMeta.put("author-type", "submitter");
+			else if (vCard.contains("moderator"))
+				commentMeta.put("author-type", "moderator");
+			else
+				commentMeta.put("author-type", "crowd");
 		}
 		
 		return commentsMeta;
@@ -356,7 +365,7 @@ public class StatisticReader extends HTMLReader {
 					if (isNumeric(shared))
 						snCounters.put("facebook",shared);
 					else
-						throw new Exception("The facebook counter is not numeric. Community: " + url);
+						snCounters.put("facebook","0");
 				}
 			}
 			
@@ -370,7 +379,7 @@ public class StatisticReader extends HTMLReader {
 			if (isNumeric(Character.toString(twCounter)))
 				snCounters.put("twitter", Character.toString(twCounter));
 			else
-				throw new Exception("The twitter counter is not numeric. Community: " + url);
+				snCounters.put("twitter", "0");
 		}
 		
     	return snCounters;
@@ -404,7 +413,7 @@ public class StatisticReader extends HTMLReader {
 					if (isNumeric(shared))
 						snCounters.put("facebook",shared);
 					else
-						throw new Exception("The facebook counter is not numeric. Idea: " + url);
+						snCounters.put("facebook","0");
 				}
 			}
 			else {
@@ -423,7 +432,7 @@ public class StatisticReader extends HTMLReader {
 		if (isNumeric(Character.toString(twCounter)))
 			snCounters.put("twitter", Character.toString(twCounter));
 		else
-			throw new Exception("The twitter counter is not numeric. Idea: " + url);
+			snCounters.put("twitter", "0");
 		
     	return snCounters;
 	}

@@ -188,6 +188,8 @@ public class CommunityInfoReader extends HTMLReader {
 											Integer commentId = Integer.parseInt(comment.get("id"));
 											if (!db.commentAlreadyExisting(commentId, idIdeaDB))
 												db.insertComment(comment, idIdeaDB, today);
+											else
+												db.updateComment(comment, commentId);
 										}
 									}
 									//Votes
@@ -531,9 +533,17 @@ public class CommunityInfoReader extends HTMLReader {
 			e.printStackTrace();
 		}
 		return comunities;
-	}
-	
-	public void existsCommunity(String urlCommunity) throws Exception {
-		getUrlContent(urlCommunity);
 	}*/
+	
+	public boolean existsCommunity(String urlCommunity) throws Exception {
+        String urlContent = getUrlContent(urlCommunity);
+        
+		if (urlContent.isEmpty())
+            return false;
+        else
+            if (urlContent.contains("Community Not Found"))
+                return false;
+            else
+                return true;
+	}
 }

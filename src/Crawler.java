@@ -82,13 +82,14 @@ public class Crawler {
 		else {
 			System.out.println("Usage TYPE [OPTION] [LETTERS] [SYNCMODE]");
 			System.out.println("TYPE: 'fg' or 'bg'");
-			System.out.println("If 'fg':");
-			System.out.println("- OPTION: 1, 2, 3, 4, or 5");
+			System.out.println("If 'bg':");
+			System.out.println("- OPTION: 1, 2, 3, 4, 5, or 6");
 			System.out.println("- 1: For synchronizing the entire IdeaScale community directory");
 			System.out.println("- 2: For synchronizing only a sub-set of communities");
 			System.out.println("- 3: For synchronizing ideas, votes, comments and social sharing counters of active communities");
 			System.out.println("- 4: For updating recorded tweet's metrics");
 			System.out.println("- 5: For synchronizing ideas, votes, comments and social sharing counters of active communities, and updating recorded tweet's metrics");
+            System.out.println("- 6: For synchronizing ideas, votes, comments and social sharing counters of all civic-participation communities even if they are inactive or close");
 			System.out.println("If 'OPTION' = 2:");
 			System.out.println("- LETTERS: ");
 			System.out.println("- 'a,b,c' specify a group of communities directory letters by using comma-separeted values");
@@ -108,6 +109,7 @@ public class Crawler {
 		System.out.println("3 - for synchronizing active communities");
 		System.out.println("4 - for updating recorded tweet's metrics");
 		System.out.println("5 - for synchronizing the ideas, votes, comments and social sharing counters of all active communities, and updating recorded tweet's metrics");
+        System.out.println("6 - for synchronizing ideas, votes, comments and social sharing counters of all civic-participation communities even if they are inactive or close");
 		
 		String option = user_input.next();
 		
@@ -149,6 +151,10 @@ public class Crawler {
 			updateTweetsMetrics();
 			exit();
 		}
+        else if(option.equals("6")) {
+        	downloadInfoCPCommunities();
+			exit();
+		}
 		else {
 			Util.printMessage("Unknown option " + option + ".","severe",logger);
 			exit();
@@ -162,14 +168,14 @@ public class Crawler {
 			if (op == 1) {
 				createExecutionFile();
 				syncCommunityCat(directory);
-				removeExecutionFile();
+				removeFile(EXECUTIONFILE);
 				exit();
 			}
 			else if (op == 3) {
 				if (args.length == 3) {
 					createExecutionFile();
 					syncActiveCommunitiesInfo(op, args[2]);
-					removeExecutionFile();
+					removeFile(EXECUTIONFILE);
 					exit();
 				}
 				else {
@@ -184,7 +190,7 @@ public class Crawler {
 					ArrayList<String> lettersSync = getSetLettersSync(letters);
 					createExecutionFile();
 					syncCommunityCat(lettersSync);
-					removeExecutionFile();
+					removeFile(EXECUTIONFILE);
 					exit();
 				}
 				else {
@@ -196,14 +202,18 @@ public class Crawler {
 			else if (op == 4) {
 				createExecutionFile();
 				updateTweetsMetrics();
-				removeExecutionFile();
+				removeFile(EXECUTIONFILE);
 				exit();
 			}
 			else if(op == 5) {
 				createExecutionFile();
 				syncActiveCommunitiesInfo(op, "1");
 				updateTweetsMetrics();
-				removeExecutionFile();
+				removeFile(EXECUTIONFILE);
+				exit();
+			}
+            else if(op == 6) {
+            	downloadInfoCPCommunities();
 				exit();
 			}
 			else {
@@ -220,6 +230,9 @@ public class Crawler {
 	}
 	
 	private static void createExecutionFile() {
+        //Remove the execution file
+        removeFile(EXECUTIONFILE);
+        
 		File file = new File(EXECUTIONFILE);
 		 
 		try {
@@ -232,20 +245,20 @@ public class Crawler {
 		}
 	}
 	
-	private static void removeExecutionFile() {
-		File file = new File(EXECUTIONFILE);
+	private static void removeFile(String fileName) {
+		File file = new File(fileName);
 		 
 		if(file.exists()) {
 			if (!file.delete()) {
-				Util.printMessage("Cannot delete the execution file","severe",logger);
+				Util.printMessage("Cannot delete the file " + fileName,"severe",logger);
 			}
-		}
-		else {
-			Util.printMessage("Execution file does not exist","severe",logger);
 		}
 	}
 	
 	private static void createErrorFile() {
+        //Remove previous existing error files
+        removeFile(ERRORFILE);
+        
 		File file = new File(ERRORFILE);
 		 
 		try {
@@ -512,6 +525,76 @@ public class Crawler {
 		}
 	}
 	
+    private static void downloadInfoCPCommunities() {
+		long startingTime = 0;
+		ArrayList<HashMap<String, String>> cpCommunities;
+		Calendar cal = Calendar.getInstance();
+		Date today = cal.getTime();
+		
+		try {
+			//Before starting check whether exists unfinished processes and finishing them
+			HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
+			if (!unfinishedProcess.isEmpty()) {
+				startingTime = System.currentTimeMillis();
+				//1: Resume the unfinished process
+				resumeUnfinishedProcess(unfinishedProcess, today);
+				HashMap<String,String> unfinishedCommunity = new HashMap<String,String>();
+				unfinishedCommunity.put("id", unfinishedProcess.get("community_id").toString());
+				unfinishedCommunity.put("url", unfinishedProcess.get("community_url").toString());
+				unfinishedCommunity.put("tab", unfinishedProcess.get("current_tab").toString());
+				//2: Save Tweets of unfinished community
+				saveCommunityTweets(unfinishedCommunity);
+				//3: Save Tweets of unfinished community ideas
+				saveCommunityIdeasTweets(unfinishedCommunity,-1);
+				//4: Finishing synchronization of the unfinished process
+				finishCommunitySync(startingTime, unfinishedCommunity.get("url"),
+								    unfinishedCommunity.get("id"), today,
+								    -1);
+				//5: Pause for a moment to avoid being banned
+				pause();
+			}
+			cpCommunities = db.getCivicParticipationCommunities();
+			System.out.println("");
+			Util.printMessage("Starting the synchronization of civic-participation communities...","info",logger);
+			for (HashMap<String,String> cpCommunity : cpCommunities) {
+				System.out.println("");
+				Util.printMessage("Synchronizing community: " + cpCommunity.get("name"),"info",logger);
+                String url = cpCommunity.get("url");
+                if (commInfoReader.existsCommunity(url)) {
+                    startingTime = System.currentTimeMillis();
+                    if (commInfoReader.checkHTTPSecureProtocol(url)) {
+                        int colon = url.indexOf(":");
+                        //Convert http to https
+                        url = url.substring(0, colon) + "s" + 
+                              url.substring(colon);
+                    }				
+                    //1: Sync Community Ideas and Social Network Statistics
+                    syncCommunitySnStatsAndIdeas(cpCommunity,-1);
+                    //2: Save Community Tweets
+                    saveCommunityTweets(cpCommunity);
+                    //3: Save Community Ideas Tweets
+                    saveCommunityIdeasTweets(cpCommunity,-1);
+                    //4: Finishing synchronization
+                    finishCommunitySync(startingTime,cpCommunity.get("name"),
+                                        cpCommunity.get("id"), today, -1);
+                    //5: Pause for a moment to avoid being banned
+                    pause(); 
+                }
+                else {
+                    Util.printMessage("The community doesn't exist","info",logger);   
+                }
+			}		
+		} catch (SQLException e) {
+			e.printStackTrace();
+			logger.log(Level.SEVERE,e.getMessage(),e);
+			createErrorFile();
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.log(Level.SEVERE,e.getMessage(),e);
+			createErrorFile();
+		}
+	}
+    
 	private static void finishCommunitySync(long startingTime, String communityName, 
 											String communityId, Date today,
 											Integer observation) 
