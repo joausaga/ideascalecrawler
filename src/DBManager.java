@@ -714,11 +714,11 @@ public class DBManager {
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(8, Integer.parseInt((String) idea.get("twitter")));
 		else
-			preparedStatement.setNull(8, java.sql.Types.INTEGER);
+			preparedStatement.setNull(8, -1);
 		if (idea.get("facebook") != null)
 			preparedStatement.setInt(9, Integer.parseInt((String) idea.get("facebook")));
 		else
-			preparedStatement.setNull(9, java.sql.Types.INTEGER);
+			preparedStatement.setNull(9, -1);
 		preparedStatement.setString(10, (String) idea.get("url"));
 		if (idea.get("score") != null)
 			preparedStatement.setInt(11, (Integer) idea.get("score"));
@@ -770,11 +770,11 @@ public class DBManager {
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
 		else
-			preparedStatement.setNull(1, java.sql.Types.INTEGER);
+			preparedStatement.setNull(1, -1);
 		if (idea.get("facebook") != null)
 			preparedStatement.setInt(2, Integer.parseInt((String) idea.get("facebook")));
 		else
-			preparedStatement.setNull(2, java.sql.Types.INTEGER);
+			preparedStatement.setNull(2, -1);
 		if (idea.get("score") != null)
 			preparedStatement.setInt(3, (Integer) idea.get("score"));
 		else

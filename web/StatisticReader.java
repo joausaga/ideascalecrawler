@@ -158,7 +158,8 @@ public class StatisticReader extends HTMLReader {
 	throws Exception {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
-		String fullURL = communityURL+ideaURLEncoded; 
+		String fullURL = communityURL+ideaURLEncoded;
+		//String fullURL = "http://protokoulu.ideascale.com/a/dtd/Opetuspilvi/35250-27481";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -300,14 +301,13 @@ public class StatisticReader extends HTMLReader {
 			commentMeta.put("parent", parent);
 			commentsMeta.add(commentMeta);
 			
-			Element commenterVCard = comment.getElementsByAttributeValueMatching("class", "vcard").first();
+			commentMeta.put("author-type", "crowd");
+            Element commenterVCard = comment.getElementsByAttributeValueMatching("class", "vcard").first();
 			String vCard = commenterVCard.attr("class");
 			if (vCard.contains("idea-submitter"))
 				commentMeta.put("author-type", "submitter");
 			else if (vCard.contains("moderator"))
 				commentMeta.put("author-type", "moderator");
-			else
-				commentMeta.put("author-type", "crowd");
 		}
 		
 		return commentsMeta;
