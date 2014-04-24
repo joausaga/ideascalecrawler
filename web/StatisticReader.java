@@ -375,9 +375,9 @@ public class StatisticReader extends HTMLReader {
 			content = getUrlContent(twURL);
 			docSN = Jsoup.parse(content);
 			String textElement = docSN.getElementsByTag("body").text();
-			char twCounter = textElement.charAt(textElement.indexOf(":") + 1);
-			if (isNumeric(Character.toString(twCounter)))
-				snCounters.put("twitter", Character.toString(twCounter));
+			String twCounter = textElement.substring(textElement.indexOf(":") + 1, textElement.indexOf(","));
+			if (isNumeric(twCounter))
+				snCounters.put("twitter", twCounter);
 			else
 				snCounters.put("twitter", "0");
 		}
@@ -427,10 +427,9 @@ public class StatisticReader extends HTMLReader {
 		content = getUrlContent(twURL);
 		docSN = Jsoup.parse(content);
 		String textElement = docSN.getElementsByTag("body").text();
-		char twCounter = textElement.charAt(textElement.indexOf(":") + 1);
-		
-		if (isNumeric(Character.toString(twCounter)))
-			snCounters.put("twitter", Character.toString(twCounter));
+		String twCounter = textElement.substring(textElement.indexOf(":") + 1, textElement.indexOf(","));
+		if (isNumeric(twCounter))
+			snCounters.put("twitter", twCounter);
 		else
 			snCounters.put("twitter", "0");
 		
