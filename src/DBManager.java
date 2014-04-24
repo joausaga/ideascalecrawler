@@ -562,11 +562,11 @@ public class DBManager {
 														"members " +
 														"FROM communities " +
 			    										"WHERE status = ? AND " +
-			    										"facebook != ? AND " +
+			    										"facebook IS NOT ? AND " +
 			    										"synchronized = ? " +
 			    										"ORDER BY ideas ASC");
 		preparedStatement.setString(1, "active");
-		preparedStatement.setString(2, "NULL");
+		preparedStatement.setString(2, null);
 		preparedStatement.setBoolean(3, false);
 		resultSet = preparedStatement.executeQuery();
 		while (resultSet.next()) {
