@@ -503,16 +503,18 @@ public class Crawler {
     					  url.substring(colon);
     			}				
 				//1: Sync Community Ideas and Social Network Statistics
-				syncCommunitySnStatsAndIdeas(activeCommunity,observation);
-				//2: Save Community Tweets
-				saveCommunityTweets(activeCommunity);
-				//3: Save Community Ideas Tweets
-				saveCommunityIdeasTweets(activeCommunity,observation);
-				//4: Finishing synchronization
-				finishCommunitySync(startingTime,activeCommunity.get("name"),
-									activeCommunity.get("id"), today, observation);
-				//5: Pause for a moment to avoid being banned
-				pause(); 
+				boolean processed = syncCommunitySnStatsAndIdeas(activeCommunity,observation);
+				if (processed) {
+					//2: Save Community Tweets
+					saveCommunityTweets(activeCommunity);
+					//3: Save Community Ideas Tweets
+					saveCommunityIdeasTweets(activeCommunity,observation);
+					//4: Finishing synchronization
+					finishCommunitySync(startingTime,activeCommunity.get("name"),
+										activeCommunity.get("id"), today, observation);
+					//5: Pause for a moment to avoid being banned
+					pause();
+				}
 			}		
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -569,16 +571,18 @@ public class Crawler {
                               url.substring(colon);
                     }				
                     //1: Sync Community Ideas and Social Network Statistics
-                    syncCommunitySnStatsAndIdeas(cpCommunity,-1);
-                    //2: Save Community Tweets
-                    saveCommunityTweets(cpCommunity);
-                    //3: Save Community Ideas Tweets
-                    saveCommunityIdeasTweets(cpCommunity,-1);
-                    //4: Finishing synchronization
-                    finishCommunitySync(startingTime,cpCommunity.get("name"),
-                                        cpCommunity.get("id"), today, -1);
-                    //5: Pause for a moment to avoid being banned
-                    pause(); 
+                    boolean processed = syncCommunitySnStatsAndIdeas(cpCommunity,-1);
+                    if (processed) {
+	                    //2: Save Community Tweets
+	                    saveCommunityTweets(cpCommunity);
+	                    //3: Save Community Ideas Tweets
+	                    saveCommunityIdeasTweets(cpCommunity,-1);
+	                    //4: Finishing synchronization
+	                    finishCommunitySync(startingTime,cpCommunity.get("name"),
+	                                        cpCommunity.get("id"), today, -1);
+	                    //5: Pause for a moment to avoid being banned
+	                    pause();
+                    }
                 }
                 else {
                     Util.printMessage("The community doesn't exist","info",logger);   
@@ -625,7 +629,7 @@ public class Crawler {
 		commInfoReader.resumeSyncProcess(unfinishedProcess, db);
 	}
 	
-	private static void syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
+	private static boolean syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
 										  			 Integer observation) 
 	throws Exception 
 	{
@@ -635,10 +639,17 @@ public class Crawler {
 		String communityId = community.get("id");
 		
 		communityStats = commInfoReader.syncCommunityStats(communityId, url, db);
-		checkIncrementSNCounters(observation,community,communityStats);
+		if (communityStats.get("status").equals("active")) {
+			checkIncrementSNCounters(observation,community,communityStats);
 		
-		ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) communityStats.get("tabs");
-		commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db, observation);
+			ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) communityStats.get("tabs");
+			commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db, observation);
+			
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 	
 	private static void checkIncrementSNCounters(Integer observation, 
