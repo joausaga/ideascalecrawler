@@ -140,7 +140,15 @@ public class StatisticReader extends HTMLReader {
 					statistics.put("explanation_text", "yes");
 			}
 			
-			statistics.put("tabs", getTabsURL(doc));
+			ArrayList<HashMap<String,String>> tabs = getTabsURL(doc);
+			if (tabs.isEmpty()) {
+				statistics.put("tabs", null);
+				statistics.put("status", "closed");
+			}
+			else {
+				statistics.put("tabs", tabs);
+				statistics.put("status", "active");
+			}
 			
 			HashMap<String,Object> auxStats = getSNCounters(doc,url);
 			statistics.put("facebook",auxStats.get("facebook"));
@@ -330,9 +338,7 @@ public class StatisticReader extends HTMLReader {
 				}
 			}
 		}
-		else {
-			throw new Exception ("Error, page without tabs.");
-		}
+		
 		return tabs;
 	}
 	
