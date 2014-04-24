@@ -284,31 +284,31 @@ public class DBManager {
 		if (community.get("ideas") != null)
 			preparedStatement.setInt(3, Integer.parseInt((String) community.get("ideas")));
 		else
-			preparedStatement.setInt(3, -1);
+			preparedStatement.setNull(3, java.sql.Types.INTEGER);
 		if (community.get("ideas_in_review") != null)
 			preparedStatement.setInt(4, Integer.parseInt((String) community.get("ideas_in_review")));
 		else
-			preparedStatement.setInt(4, -1);
+			preparedStatement.setNull(4, java.sql.Types.INTEGER);
 		if (community.get("ideas_in_progress") != null)	
 			preparedStatement.setInt(5, Integer.parseInt((String) community.get("ideas_in_progress")));
 		else
-			preparedStatement.setInt(5, -1);
+			preparedStatement.setNull(5, java.sql.Types.INTEGER);
 		if (community.get("ideas_completed") != null)
 			preparedStatement.setInt(6, Integer.parseInt((String) community.get("ideas_completed")));
 		else
-			preparedStatement.setInt(6, -1);
+			preparedStatement.setNull(6, java.sql.Types.INTEGER);
 		if (community.get("members") != null)
 			preparedStatement.setInt(7, Integer.parseInt((String) community.get("members")));
 		else
-			preparedStatement.setInt(7, -1);
+			preparedStatement.setNull(7, java.sql.Types.INTEGER);
 		if (community.get("votes") != null)
 			preparedStatement.setInt(8, Integer.parseInt((String) community.get("votes")));
 		else
-			preparedStatement.setInt(8, -1);
+			preparedStatement.setNull(8, java.sql.Types.INTEGER);
 		if (community.get("comments") != null)
 			preparedStatement.setInt(9, Integer.parseInt((String) community.get("comments")));
 		else
-			preparedStatement.setInt(9, -1);
+			preparedStatement.setNull(9, java.sql.Types.INTEGER);
 		
 		HashMap<String,Object> dateInfo = getDatesParams(community);
 		
@@ -325,7 +325,7 @@ public class DBManager {
 		if (dateInfo.get("lifespan") != null)
 			preparedStatement.setInt(12, (Integer) dateInfo.get("lifespan"));
 		else
-			preparedStatement.setInt(12, -1);
+			preparedStatement.setNull(12, java.sql.Types.INTEGER);
 				
 		preparedStatement.setString(13, (String) community.get("status"));
 		preparedStatement.setBoolean(14, false);
@@ -333,7 +333,7 @@ public class DBManager {
 		if (community.get("facebook") != null)
 			preparedStatement.setInt(16, Integer.parseInt((String) community.get("facebook")));
 		else
-			preparedStatement.setInt(16, -1);
+			preparedStatement.setNull(16, java.sql.Types.INTEGER);
 		
 		if (community.get("logo") != null)
 			preparedStatement.setBoolean(17, true);
@@ -348,7 +348,7 @@ public class DBManager {
 		if (community.get("twitter") != null)
 			preparedStatement.setInt(19, Integer.parseInt((String) community.get("twitter")));
 		else
-			preparedStatement.setInt(19, -1);
+			preparedStatement.setNull(19, java.sql.Types.INTEGER);
 				
 		preparedStatement.executeUpdate();
 	    preparedStatement.close();
@@ -638,39 +638,39 @@ public class DBManager {
 		if (stats.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) stats.get("twitter")));
 		else
-			preparedStatement.setInt(1, -1);
+			preparedStatement.setNull(1, java.sql.Types.INTEGER);
 		if (stats.get("facebook") != null)
 			preparedStatement.setInt(2, Integer.parseInt((String) stats.get("facebook")));
 		else
-			preparedStatement.setInt(2, -1);
+			preparedStatement.setNull(2, java.sql.Types.INTEGER);
 		if (stats.get("ideas") != null)
 			preparedStatement.setInt(3, Integer.parseInt((String) stats.get("ideas")));
 		else
-			preparedStatement.setInt(3, -1);
+			preparedStatement.setNull(3, java.sql.Types.INTEGER);
 		if (stats.get("comments") != null)
 			preparedStatement.setInt(4, Integer.parseInt((String) stats.get("comments")));
 		else
-			preparedStatement.setInt(4, -1);
+			preparedStatement.setNull(4, java.sql.Types.INTEGER);
 		if (stats.get("votes") != null)
 			preparedStatement.setInt(5, Integer.parseInt((String) stats.get("votes")));
 		else
-			preparedStatement.setInt(5, -1);
+			preparedStatement.setNull(5, java.sql.Types.INTEGER);
 		if (stats.get("ideas_in_review") != null)
 			preparedStatement.setInt(6, Integer.parseInt((String) stats.get("ideas_in_review")));
 		else
-			preparedStatement.setInt(6, -1);
+			preparedStatement.setNull(6, java.sql.Types.INTEGER);
 		if (stats.get("ideas_in_progress") != null)	
 			preparedStatement.setInt(7, Integer.parseInt((String) stats.get("ideas_in_progress")));
 		else
-			preparedStatement.setInt(7, -1);
+			preparedStatement.setNull(7, java.sql.Types.INTEGER);
 		if (stats.get("ideas_completed") != null)
 			preparedStatement.setInt(8, Integer.parseInt((String) stats.get("ideas_completed")));
 		else
-			preparedStatement.setInt(8, -1);
+			preparedStatement.setNull(8, java.sql.Types.INTEGER);
 		if (stats.get("members") != null)
 			preparedStatement.setInt(9, Integer.parseInt((String) stats.get("members")));
 		else
-			preparedStatement.setInt(9, -1);
+			preparedStatement.setNull(9, java.sql.Types.INTEGER);
 		preparedStatement.setString(10, (String) idCommunity);
 		
 		preparedStatement.executeUpdate();
@@ -714,11 +714,11 @@ public class DBManager {
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(8, Integer.parseInt((String) idea.get("twitter")));
 		else
-			preparedStatement.setInt(8, -1);
+			preparedStatement.setNull(8, java.sql.Types.INTEGER);
 		if (idea.get("facebook") != null)
 			preparedStatement.setInt(9, Integer.parseInt((String) idea.get("facebook")));
 		else
-			preparedStatement.setInt(9, -1);
+			preparedStatement.setNull(9, java.sql.Types.INTEGER);
 		preparedStatement.setString(10, (String) idea.get("url"));
 		if (idea.get("score") != null)
 			preparedStatement.setInt(11, (Integer) idea.get("score"));
@@ -770,11 +770,11 @@ public class DBManager {
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
 		else
-			preparedStatement.setInt(1, -1);
+			preparedStatement.setNull(1, java.sql.Types.INTEGER);
 		if (idea.get("facebook") != null)
 			preparedStatement.setInt(2, Integer.parseInt((String) idea.get("facebook")));
 		else
-			preparedStatement.setInt(2, -1);
+			preparedStatement.setNull(2, java.sql.Types.INTEGER);
 		if (idea.get("score") != null)
 			preparedStatement.setInt(3, (Integer) idea.get("score"));
 		else
