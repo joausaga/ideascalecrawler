@@ -46,8 +46,10 @@ public class CommunityInfoReader extends HTMLReader {
 		Util.printMessage("Getting community's stats","info",logger);
 		//Get community statistics
 		HashMap<String,Object> comStatistics = statsReader.getCommunityStatistic(communityURL);
-		//Update community statistics
-		db.updateCommunityStats(comStatistics, communityId);
+		if (comStatistics.get("status").equals("active")) {
+            //Update community statistics
+            db.updateCommunityStats(comStatistics, communityId);
+        }
 		
 		return comStatistics;
 	}

@@ -632,7 +632,7 @@ public class DBManager {
 				  										"ideas = ?, comments = ?, " +
 				  										"votes = ?, ideas_in_review = ?, " +
 				  										"ideas_in_progress = ?, " +
-				  										"ideas_implemented = ?," +
+				  										"ideas_implemented = ?, " +
 				  										"members = ? " +
 				  										"WHERE id = ?");
 		if (stats.get("twitter") != null)
