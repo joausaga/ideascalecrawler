@@ -167,7 +167,6 @@ public class StatisticReader extends HTMLReader {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
 		String fullURL = communityURL+ideaURLEncoded;
-		//String fullURL = "http://protokoulu.ideascale.com/a/dtd/Opetuspilvi/35250-27481";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -184,89 +183,92 @@ public class StatisticReader extends HTMLReader {
 		for (int i = 0; i < desc.size(); i++) 
 			ideaDescription += desc.get(i).text();
 		statistics.put("description", ideaDescription);
-		//Tags
-		Elements tags = doc.getElementsByAttributeValueMatching(HREF_ATTR, IDEA_HREF_TAGS);
-		if (!tags.isEmpty()) {
-			String ideaTags = "";
-			int numTags = tags.size();
-			for (int i = 0; i < numTags; i++) {
-				if (i != (numTags - 1))
-					ideaTags += tags.get(i).text() + ", ";
-				else
-					ideaTags += tags.get(i).text();
-			}
-			statistics.put("tags", ideaTags);
-		}
-		else {
-			statistics.put("tags", null);
-		}
-		//Social Networks
-		HashMap<String,Object> auxStats = getIdeaSNCounters(doc,fullURL);
-		statistics.put("facebook", auxStats.get("facebook"));
-		statistics.put("twitter",auxStats.get("twitter"));
 		
-		//Get the comment counter and comments meta-info
-		Element comments = doc.getElementById(IDEA_COMMENTS_ID);
-		if (comments != null) {
-			statistics.put("comments", comments.children().size());
-			ArrayList<HashMap<String,String>> commentsMeta = new ArrayList<HashMap<String,String>>();
-			commentsMeta = getComments(comments,commentsMeta,"-1");
-			statistics.put("comments-meta", commentsMeta);
-		}
-		else {
-			statistics.put("comments", 0);
-		}
-		
-		//Get score
-		Element scoreElem = doc.getElementsByClass("vote-number").first();
-		if (scoreElem != null)
-			statistics.put("score", Integer.parseInt(scoreElem.text()));
-		else
-			statistics.put("score", 0);
-		
-		//Get votes meta-info
-		Element voteElem = doc.getElementById("vote-activity-list");
-		if (voteElem != null) {
-			ArrayList<HashMap<String,String>> votesMeta = new ArrayList<HashMap<String,String>>();
-			for (Element vote : voteElem.children()) {
-				HashMap<String,String> voteMeta = new HashMap<String,String>();
-				Elements voter = vote.getElementsByClass("voter");
-				if (voter.first().children().size() > 1) {
-					Element eAuthor = voter.first().child(1);
-					voteMeta.put("author-name", eAuthor.text());
-					String authorId = eAuthor.attr(HREF_ATTR);
-					authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
-					authorId = authorId.split("-")[0];
-					if (isNumeric(authorId))
-						voteMeta.put("author-id", authorId);
+		//If the description is null the idea is inaccessible
+		if (!ideaDescription.isEmpty()) {	
+			//Tags
+			Elements tags = doc.getElementsByAttributeValueMatching(HREF_ATTR, IDEA_HREF_TAGS);
+			if (!tags.isEmpty()) {
+				String ideaTags = "";
+				int numTags = tags.size();
+				for (int i = 0; i < numTags; i++) {
+					if (i != (numTags - 1))
+						ideaTags += tags.get(i).text() + ", ";
 					else
-						voteMeta.put("author-id", "-1");
+						ideaTags += tags.get(i).text();
 				}
-				else {
-					voteMeta.put("author-name", "Unsuscribed User");
-					voteMeta.put("author-id", "-1");
-				}
-				Element type = vote.getElementsByClass("vote").first().child(0);
-				if (type.getElementsByTag("strong").attr("class").equals("up"))
-					voteMeta.put("value", "1");
-				else if (type.getElementsByTag("strong").attr("class").equals("down"))
-					voteMeta.put("value", "-1");
-				else
-					throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
-				Element date = vote.getElementsByClass("vote").first().child(1);
-				voteMeta.put("date", date.text());
-				
-				votesMeta.add(voteMeta);
+				statistics.put("tags", ideaTags);
 			}
-			statistics.put("votes-meta", votesMeta);
+			else {
+				statistics.put("tags", null);
+			}
+			//Social Networks
+			HashMap<String,Object> auxStats = getIdeaSNCounters(doc,fullURL);
+			statistics.put("facebook", auxStats.get("facebook"));
+			statistics.put("twitter",auxStats.get("twitter"));
+			
+			//Get the comment counter and comments meta-info
+			Element comments = doc.getElementById(IDEA_COMMENTS_ID);
+			if (comments != null) {
+				statistics.put("comments", comments.children().size());
+				ArrayList<HashMap<String,String>> commentsMeta = new ArrayList<HashMap<String,String>>();
+				commentsMeta = getComments(comments,commentsMeta,"-1");
+				statistics.put("comments-meta", commentsMeta);
+			}
+			else {
+				statistics.put("comments", 0);
+			}
+			
+			//Get score
+			Element scoreElem = doc.getElementsByClass("vote-number").first();
+			if (scoreElem != null)
+				statistics.put("score", Integer.parseInt(scoreElem.text()));
+			else
+				statistics.put("score", 0);
+			
+			//Get votes meta-info
+			Element voteElem = doc.getElementById("vote-activity-list");
+			if (voteElem != null) {
+				ArrayList<HashMap<String,String>> votesMeta = new ArrayList<HashMap<String,String>>();
+				for (Element vote : voteElem.children()) {
+					HashMap<String,String> voteMeta = new HashMap<String,String>();
+					Elements voter = vote.getElementsByClass("voter");
+					if (voter.first().children().size() > 1) {
+						Element eAuthor = voter.first().child(1);
+						voteMeta.put("author-name", eAuthor.text());
+						String authorId = eAuthor.attr(HREF_ATTR);
+						authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
+						authorId = authorId.split("-")[0];
+						if (isNumeric(authorId))
+							voteMeta.put("author-id", authorId);
+						else
+							voteMeta.put("author-id", "-1");
+					}
+					else {
+						voteMeta.put("author-name", "Unsuscribed User");
+						voteMeta.put("author-id", "-1");
+					}
+					Element type = vote.getElementsByClass("vote").first().child(0);
+					if (type.getElementsByTag("strong").attr("class").equals("up"))
+						voteMeta.put("value", "1");
+					else if (type.getElementsByTag("strong").attr("class").equals("down"))
+						voteMeta.put("value", "-1");
+					else
+						throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
+					Element date = vote.getElementsByClass("vote").first().child(1);
+					voteMeta.put("date", date.text());
+					
+					votesMeta.add(voteMeta);
+				}
+				statistics.put("votes-meta", votesMeta);
+			}
+			
+			Element similarIdeas = doc.getElementById(IDEA_SIMILAR_ID);
+			if (similarIdeas != null)
+					statistics.put("similar", similarIdeas.children().size());	
+			else
+				statistics.put("similar", 0);
 		}
-		
-		Element similarIdeas = doc.getElementById(IDEA_SIMILAR_ID);
-		if (similarIdeas != null)
-				statistics.put("similar", similarIdeas.children().size());	
-		else
-			statistics.put("similar", 0);
-		
 		return statistics;
 	}
 	

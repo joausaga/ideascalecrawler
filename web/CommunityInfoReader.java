@@ -131,85 +131,90 @@ public class CommunityInfoReader extends HTMLReader {
 								Element ideaTitle = ideaTitleElems.first();
 								String ideaLink = ideaTitle.child(0).attr("href");
 								HashMap<String,Object> ideaStats = statsReader.getIdeaStatistics(communityURL,ideaLink);
-								ideaStats.put("title", ideaTitle.text());
-								ideaStats.put("url", communityURL+ideaLink);
-								ideaStats.put("id", ideaId);
-								Elements ideaAuthorElems = ideaList.getElementsByAttributeValue(IDEA_AUTHOR_ATTR_KEY, IDEA_AUTHOR_ATTR_VAL);
-								if (!ideaAuthorElems.isEmpty()) {
-									ideaStats.put("author-name", ideaAuthorElems.text());
-									String authorId = ideaAuthorElems.attr("href");
-									authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
-									authorId = authorId.split("-")[0];
-									ideaStats.put("author-id", authorId);
-								}
-								else {
-									ideaStats.put("author-name", "Unsuscribed User");
-									ideaStats.put("author-id", "-1");
-								}
-								Elements ideaDTElems = ideaList.getElementsByClass(IDEA_CREATION_TIME);
-								if (!ideaDTElems.isEmpty()) {
-									String[] ideaDT = ideaDTElems.first().attr("title").split("T");
-									Date ideaDateTime = formatter.parse(ideaDT[0]+" "+ideaDT[1].split("-")[0]);
-									ideaStats.put("datetime", ideaDateTime);
-								}
-								else {
-									ideaStats.put("datetime", null);
-								}
-								Element statusElement = ideaList.getElementById("idea-"+ideaId+"-status");
-								if (statusElement != null) {
-									String statusStr = statusElement.attr("class");
-									ideaStats.put("status", statusStr.split(" ")[1]);
-								}
-								else {
-									ideaStats.put("status", null);
-								}
-								ideaStats.put("page", pageNum);
-								ideaStats.put("list_pos", listPos);
-								//Update/Insert Idea
-								HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
-								if (existingIdea.isEmpty()) {
-									db.insertCommunityIdea(ideaStats,communityId.toString());
-								}
-								else {
-									db.updateCommunityIdea(ideaStats, Integer.parseInt(existingIdea.get("id")));
-									checkIncrementSNCounters(existingIdea,ideaStats,observation,db);
-								}
-								//Save Comments and Votes
-								if (existingIdea.isEmpty()) {
-									idIdeaDB = db.getIdeaId(Integer.parseInt(ideaId));
-								}
-								else {
-									idIdeaDB = Integer.parseInt(existingIdea.get("id"));
-								}
-								if (idIdeaDB != -1) {
-									//Comments
-									if (ideaStats.containsKey("comments-meta")) {
-										ArrayList<HashMap<String,String>> commentsMeta = 
-										(ArrayList<HashMap<String, String>>) ideaStats.get("comments-meta");
-										for (HashMap<String,String> comment : commentsMeta) {
-											Integer commentId = Integer.parseInt(comment.get("id"));
-											if (!db.commentAlreadyExisting(commentId, idIdeaDB))
-												db.insertComment(comment, idIdeaDB, today);
-											else
-												db.updateComment(comment, commentId);
+								//If every property of the hashmap is null the idea is inaccessible
+								if (!(ideaStats.get("tags") == null && ideaStats.get("facebook") == null &&
+									ideaStats.get("twitter") == null && ideaStats.get("comments") == null &&
+									ideaStats.get("score") == null)) {
+									ideaStats.put("title", ideaTitle.text());
+									ideaStats.put("url", communityURL+ideaLink);
+									ideaStats.put("id", ideaId);
+									Elements ideaAuthorElems = ideaList.getElementsByAttributeValue(IDEA_AUTHOR_ATTR_KEY, IDEA_AUTHOR_ATTR_VAL);
+									if (!ideaAuthorElems.isEmpty()) {
+										ideaStats.put("author-name", ideaAuthorElems.text());
+										String authorId = ideaAuthorElems.attr("href");
+										authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
+										authorId = authorId.split("-")[0];
+										ideaStats.put("author-id", authorId);
+									}
+									else {
+										ideaStats.put("author-name", "Unsuscribed User");
+										ideaStats.put("author-id", "-1");
+									}
+									Elements ideaDTElems = ideaList.getElementsByClass(IDEA_CREATION_TIME);
+									if (!ideaDTElems.isEmpty()) {
+										String[] ideaDT = ideaDTElems.first().attr("title").split("T");
+										Date ideaDateTime = formatter.parse(ideaDT[0]+" "+ideaDT[1].split("-")[0]);
+										ideaStats.put("datetime", ideaDateTime);
+									}
+									else {
+										ideaStats.put("datetime", null);
+									}
+									Element statusElement = ideaList.getElementById("idea-"+ideaId+"-status");
+									if (statusElement != null) {
+										String statusStr = statusElement.attr("class");
+										ideaStats.put("status", statusStr.split(" ")[1]);
+									}
+									else {
+										ideaStats.put("status", null);
+									}
+									ideaStats.put("page", pageNum);
+									ideaStats.put("list_pos", listPos);
+									//Update/Insert Idea
+									HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
+									if (existingIdea.isEmpty()) {
+										db.insertCommunityIdea(ideaStats,communityId.toString());
+									}
+									else {
+										db.updateCommunityIdea(ideaStats, Integer.parseInt(existingIdea.get("id")));
+										checkIncrementSNCounters(existingIdea,ideaStats,observation,db);
+									}
+									//Save Comments and Votes
+									if (existingIdea.isEmpty()) {
+										idIdeaDB = db.getIdeaId(Integer.parseInt(ideaId));
+									}
+									else {
+										idIdeaDB = Integer.parseInt(existingIdea.get("id"));
+									}
+									if (idIdeaDB != -1) {
+										//Comments
+										if (ideaStats.containsKey("comments-meta")) {
+											ArrayList<HashMap<String,String>> commentsMeta = 
+											(ArrayList<HashMap<String, String>>) ideaStats.get("comments-meta");
+											for (HashMap<String,String> comment : commentsMeta) {
+												Integer commentId = Integer.parseInt(comment.get("id"));
+												if (!db.commentAlreadyExisting(commentId, idIdeaDB))
+													db.insertComment(comment, idIdeaDB, today);
+												else
+													db.updateComment(comment, commentId);
+											}
+										}
+										//Votes
+										if (ideaStats.containsKey("votes-meta")) {
+											ArrayList<HashMap<String,String>> votesMeta = 
+											(ArrayList<HashMap<String, String>>) ideaStats.get("votes-meta");
+											for (HashMap<String,String> vote : votesMeta) {
+												Integer authorId = Integer.parseInt(vote.get("author-id"));
+												String authorName = vote.get("author-name");
+												if (!db.voteAlreadyExisting(authorId, authorName, idIdeaDB))
+													db.insertVote(vote, idIdeaDB, today);
+											}
 										}
 									}
-									//Votes
-									if (ideaStats.containsKey("votes-meta")) {
-										ArrayList<HashMap<String,String>> votesMeta = 
-										(ArrayList<HashMap<String, String>>) ideaStats.get("votes-meta");
-										for (HashMap<String,String> vote : votesMeta) {
-											Integer authorId = Integer.parseInt(vote.get("author-id"));
-											String authorName = vote.get("author-name");
-											if (!db.voteAlreadyExisting(authorId, authorName, idIdeaDB))
-												db.insertVote(vote, idIdeaDB, today);
-										}
+									else {
+										throw new Exception("Could not find idea with id: " + ideaId);
 									}
+									info.add(ideaStats);
 								}
-								else {
-									throw new Exception("Could not find idea with id: " + ideaId);
-								}
-								info.add(ideaStats);
 							}
 							else {
 								throw new Exception("Couldn't find idea's title");
