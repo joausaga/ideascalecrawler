@@ -23,7 +23,7 @@ public class TweetUpdater extends TwitterApp {
 	private static String TWID = "id_str";
 	private static String TWITTERURL = "http://twitter.com/";
 	private TweetRepliesReader twRepReader = null;
-    private static Integer MAX_ATTEMPTS = 10;
+    private static Integer MAX_ATTEMPTS = 2;
 	
 	
 	public TweetUpdater() {
