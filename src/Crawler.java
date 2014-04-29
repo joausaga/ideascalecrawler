@@ -509,12 +509,12 @@ public class Crawler {
 					saveCommunityTweets(activeCommunity);
 					//3: Save Community Ideas Tweets
 					saveCommunityIdeasTweets(activeCommunity,observation);
-					//4: Finishing synchronization
-					finishCommunitySync(startingTime,activeCommunity.get("name"),
-										activeCommunity.get("id"), today, observation);
-					//5: Pause for a moment to avoid being banned
-					pause();
-				}
+                }
+				//4: Finishing synchronization
+				finishCommunitySync(startingTime,activeCommunity.get("name"),
+								    activeCommunity.get("id"), today, observation);
+				//5: Pause for a moment to avoid being banned
+				pause();
 			}		
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -577,12 +577,12 @@ public class Crawler {
 	                    saveCommunityTweets(cpCommunity);
 	                    //3: Save Community Ideas Tweets
 	                    saveCommunityIdeasTweets(cpCommunity,-1);
-	                    //4: Finishing synchronization
-	                    finishCommunitySync(startingTime,cpCommunity.get("name"),
-	                                        cpCommunity.get("id"), today, -1);
-	                    //5: Pause for a moment to avoid being banned
-	                    pause();
                     }
+	                //4: Finishing synchronization
+	                finishCommunitySync(startingTime,cpCommunity.get("name"),
+	                                    cpCommunity.get("id"), today, -1);
+	                //5: Pause for a moment to avoid being banned
+	                pause();
                 }
                 else {
                     Util.printMessage("The community doesn't exist","info",logger);   
@@ -790,13 +790,15 @@ public class Crawler {
 			ArrayList<HashMap<String,String>> tweets = db.getCommunitiesTweets();
 			for (HashMap<String,String> tweet : tweets) {
 				HashMap<String,Long> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"));
-				db.updateCommunityTweetMetric(tweet.get("id"), newMetrics);
+                if (newMetrics.size() > 0)
+				    db.updateCommunityTweetMetric(tweet.get("id"), newMetrics);
 			}
 			//Update metrics of tweets related to ideas
 			tweets = db.getIdeasTweets();
 			for (HashMap<String,String> tweet : tweets) {
 				HashMap<String,Long> newMetrics = tu.updateTweetMetrics(tweet.get("id_tweet"));
-				db.updateIdeaTweetMetric(tweet.get("id"), newMetrics);
+                if (newMetrics.size() > 0)
+				    db.updateIdeaTweetMetric(tweet.get("id"), newMetrics);
 			}
 			Util.printMessage("Tweets Metrics Update finished.", "info", logger);
 			
