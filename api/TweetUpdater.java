@@ -23,6 +23,7 @@ public class TweetUpdater extends TwitterApp {
 	private static String TWID = "id_str";
 	private static String TWITTERURL = "http://twitter.com/";
 	private TweetRepliesReader twRepReader = null;
+    private static Integer MAX_ATTEMPTS = 10;
 	
 	
 	public TweetUpdater() {
@@ -34,6 +35,7 @@ public class TweetUpdater extends TwitterApp {
 	throws Exception 
 	{
 		HashMap<String,Long> newMetrics = new HashMap<String,Long>();
+        int attemptCounter = 0;
 		
 		String fullURL = REQUESTURL+idTweet+".json";
 		
@@ -52,13 +54,14 @@ public class TweetUpdater extends TwitterApp {
 			response = doRequest(httpGet);
 		}
 		
-		while (response.getStatusLine().getStatusCode() != 200) {
+		while (response.getStatusLine().getStatusCode() != 200 || attemptCounter <= MAX_ATTEMPTS) {
 			if (response.getStatusLine().getStatusCode() == 401 ||
 	        	response.getStatusLine().getStatusCode() == 406) {
 	        	Util.printMessage("Ingnoring invalid URL: " + fullURL, "severe",logger);
 	        	return newMetrics;
 	        }
 			else {
+                attemptCounter += 1;
 				Util.printMessage("Wrong Twitter API response code, got: " + 
 						  		  response.getStatusLine().getStatusCode() + 
 						  		  " expected 200","info",logger);
@@ -67,19 +70,23 @@ public class TweetUpdater extends TwitterApp {
 			}
 		}
 		
-        	
-    	ResponseHandler<String> handler = new BasicResponseHandler();
-		String body = handler.handleResponse(response);
-		
-		Object obj = parser.parse(body);
-		JSONObject tweet = (JSONObject) obj;
-		newMetrics.put("retweets", (Long) tweet.get(TWRTCOUNTER));
-		newMetrics.put("favorites", (Long) tweet.get(TWFVCOUNTER));
-		JSONObject authorObj = (JSONObject) tweet.get(TWAUTHOR);
-		String author = (String) authorObj.get(TWAUTHORHANDLE);
-		String statusURL = TWITTERURL+author+"/status/"+tweet.get(TWID);
-		long replies = twRepReader.getReplies(statusURL);
-		newMetrics.put("replies", replies);
+        if (attemptCounter <= MAX_ATTEMPTS) {	
+            ResponseHandler<String> handler = new BasicResponseHandler();
+            String body = handler.handleResponse(response);
+            
+            Object obj = parser.parse(body);
+            JSONObject tweet = (JSONObject) obj;
+            newMetrics.put("retweets", (Long) tweet.get(TWRTCOUNTER));
+            newMetrics.put("favorites", (Long) tweet.get(TWFVCOUNTER));
+            JSONObject authorObj = (JSONObject) tweet.get(TWAUTHOR);
+            String author = (String) authorObj.get(TWAUTHORHANDLE);
+            String statusURL = TWITTERURL+author+"/status/"+tweet.get(TWID);
+            long replies = twRepReader.getReplies(statusURL);
+            newMetrics.put("replies", replies);
+        }
+        else {
+            Util.printMessage("Couldn't find the tweet: " + idTweet,"info",logger);
+        }
 		
 		return newMetrics;
 	}

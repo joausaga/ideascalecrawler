@@ -33,6 +33,7 @@ public class TweetSearch extends TwitterApp {
 	private static String TWID = "id_str";
 	private static String TWITTERURL = "http://twitter.com/";
 	private TweetRepliesReader twRepReader = null;
+    private static Integer MAX_ATTEMPTS = 10;
 	
 	
 	public TweetSearch() {
@@ -43,7 +44,9 @@ public class TweetSearch extends TwitterApp {
 	public ArrayList<HashMap<String,Object>> GetTweets(String url) 
 	throws Exception 
 	{
-		String fullURL = REQUESTURL+URLEncoder.encode(url, "utf-8");
+		int attemptCounter = 0;
+        
+        String fullURL = REQUESTURL+URLEncoder.encode(url, "utf-8");
 		
 		Util.printMessage("Remaining requests  " + remainingRequests + " in this time window","info",logger);
 			
@@ -66,13 +69,14 @@ public class TweetSearch extends TwitterApp {
 				response = doRequest(httpGet);
 			}
 			
-			while (response.getStatusLine().getStatusCode() != 200) {
+			while (response.getStatusLine().getStatusCode() != 200 || attemptCounter <= MAX_ATTEMPTS) {
 				if (response.getStatusLine().getStatusCode() == 401 ||
 		        	response.getStatusLine().getStatusCode() == 406) {
 		        	Util.printMessage("Ingnoring invalid URL: " + fullURL, "severe",logger);
 		        	return tweets;
 		        }
 				else {
+                    attemptCounter += 1;
 					Util.printMessage("Wrong Twitter API response code, got: " + 
 							  		  response.getStatusLine().getStatusCode() + 
 							  		  " expected 200","info",logger);
@@ -81,34 +85,39 @@ public class TweetSearch extends TwitterApp {
 				}
 			}
 			
-        	ResponseHandler<String> handler = new BasicResponseHandler();
-			String body = handler.handleResponse(response);
-			
-			Object obj = parser.parse(body);
-			JSONObject jsonObj = (JSONObject) obj;
-			JSONArray statuses = (JSONArray) jsonObj.get(ARRAYTWS);
-			Iterator<JSONObject> iterator = statuses.iterator();
-			while (iterator.hasNext()) {
-				JSONObject status = (JSONObject) iterator.next();
-				HashMap<String,Object> tweet = new HashMap<String,Object>();
-				tweet.put("retweets", status.get(TWRTCOUNTER));
-				tweet.put("favorites", status.get(TWFVCOUNTER));
-				Date tweetDateTime = formatter.parse((String) status.get(TWDATE));
-				tweet.put("datetime", tweetDateTime);
-				tweet.put("text", status.get(TWTXT));
-				JSONObject authorObj = (JSONObject) status.get(TWAUTHOR);
-				String author = (String) authorObj.get(TWAUTHORHANDLE);
-				tweet.put("author", author);
-				String statusURL = TWITTERURL+author+"/status/"+status.get(TWID);
-				tweet.put("id", status.get(TWID));
-				tweet.put("url", statusURL);
-				int replies = twRepReader.getReplies(statusURL);
-				tweet.put("replies", replies);
-				tweets.add(tweet);
-			}
-			if (tweets.size() > 0) {
-				Util.printMessage("Found " + tweets.size() + " tweets related to the community.","info",logger);
-			}
+            if (attemptCounter <= MAX_ATTEMPTS) {
+                ResponseHandler<String> handler = new BasicResponseHandler();
+                String body = handler.handleResponse(response);
+                
+                Object obj = parser.parse(body);
+                JSONObject jsonObj = (JSONObject) obj;
+                JSONArray statuses = (JSONArray) jsonObj.get(ARRAYTWS);
+                Iterator<JSONObject> iterator = statuses.iterator();
+                while (iterator.hasNext()) {
+                    JSONObject status = (JSONObject) iterator.next();
+                    HashMap<String,Object> tweet = new HashMap<String,Object>();
+                    tweet.put("retweets", status.get(TWRTCOUNTER));
+                    tweet.put("favorites", status.get(TWFVCOUNTER));
+                    Date tweetDateTime = formatter.parse((String) status.get(TWDATE));
+                    tweet.put("datetime", tweetDateTime);
+                    tweet.put("text", status.get(TWTXT));
+                    JSONObject authorObj = (JSONObject) status.get(TWAUTHOR);
+                    String author = (String) authorObj.get(TWAUTHORHANDLE);
+                    tweet.put("author", author);
+                    String statusURL = TWITTERURL+author+"/status/"+status.get(TWID);
+                    tweet.put("id", status.get(TWID));
+                    tweet.put("url", statusURL);
+                    int replies = twRepReader.getReplies(statusURL);
+                    tweet.put("replies", replies);
+                    tweets.add(tweet);
+                }
+                if (tweets.size() > 0) {
+                    Util.printMessage("Found " + tweets.size() + " tweets related to the community.","info",logger);
+                }
+            }
+            else {
+                Util.printMessage("Couldn't find the tweet related to: " + fullURL,"info",logger);
+            }
 		}
         else {
         	Util.printMessage("Ingnoring invalid URL: " + fullURL, "severe",logger);
