@@ -23,7 +23,7 @@ public class TweetUpdater extends TwitterApp {
 	private static String TWID = "id_str";
 	private static String TWITTERURL = "http://twitter.com/";
 	private TweetRepliesReader twRepReader = null;
-    private static Integer MAX_ATTEMPTS = 2;
+    private static Integer MAX_ATTEMPTS = 1;
 	
 	
 	public TweetUpdater() {
@@ -54,7 +54,7 @@ public class TweetUpdater extends TwitterApp {
 			response = doRequest(httpGet);
 		}
 		
-		while (response.getStatusLine().getStatusCode() != 200 || attemptCounter <= MAX_ATTEMPTS) {
+		while (response.getStatusLine().getStatusCode() != 200 && attemptCounter <= MAX_ATTEMPTS) {
 			if (response.getStatusLine().getStatusCode() == 401 ||
 	        	response.getStatusLine().getStatusCode() == 406) {
 	        	Util.printMessage("Ingnoring invalid URL: " + fullURL, "severe",logger);
