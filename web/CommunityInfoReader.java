@@ -225,7 +225,7 @@ public class CommunityInfoReader extends HTMLReader {
 						}
 					}
 					else {
-						//If an idea was already found and but this time we see 
+						//If an idea was already found but this time we see 
 						//it has a better position, then we update its position
 						HashMap<String,String> existingIdea = db.ideaAlreadyInserted(Integer.parseInt(ideaId));
 						idIdeaDB = Integer.parseInt(existingIdea.get("id"));

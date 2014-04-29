@@ -167,6 +167,7 @@ public class StatisticReader extends HTMLReader {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
 		String fullURL = communityURL+ideaURLEncoded;
+		//String fullURL = "http://protools.ideascale.com/a/dtd/Freeze-tracks-feature/22400-3779";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -175,6 +176,7 @@ public class StatisticReader extends HTMLReader {
 		statistics.put("score", null);
 		
 		String content = getUrlContent(Util.toURI(communityURL+ideaURL));
+		//String content = getUrlContent(Util.toURI(fullURL));
 		Document doc = Jsoup.parse(content);	
 		
 		//Description
