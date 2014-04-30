@@ -432,8 +432,7 @@ public class StatisticReader extends HTMLReader {
 		}
 		
 		//Get Twitter counter
-		String twURL = TWITTER_URL_P + URLEncoder.encode(url, "utf-8") + 
-			    	   TWITTER_URL_S;
+		String twURL = TWITTER_URL_P + url + TWITTER_URL_S;
 		content = getUrlContent(twURL);
 		docSN = Jsoup.parse(content);
 		String textElement = docSN.getElementsByTag("body").text();
