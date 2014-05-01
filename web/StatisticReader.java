@@ -39,6 +39,7 @@ public class StatisticReader extends HTMLReader {
 	private final static String IDEA_HREF_TAGS = "/a/ideas/tag/tags/";
 	private final static String HREF_ATTR = "href";
 	private final static String IDEA_SIMILAR_ID = "similar-idea-list";
+	private final static String IDEA_ATTACHMENTS_ID = "attachments";
 	
 	public StatisticReader() {
 		super();
@@ -174,6 +175,7 @@ public class StatisticReader extends HTMLReader {
 		statistics.put("twitter", null);
 		statistics.put("comments", null);
 		statistics.put("score", null);
+		statistics.put("attachments", null);
 		
 		String content = getUrlContent(Util.toURI(communityURL+ideaURL));
 		//String content = getUrlContent(Util.toURI(fullURL));
@@ -265,11 +267,19 @@ public class StatisticReader extends HTMLReader {
 				statistics.put("votes-meta", votesMeta);
 			}
 			
+			//Get similar ideas
 			Element similarIdeas = doc.getElementById(IDEA_SIMILAR_ID);
 			if (similarIdeas != null)
 					statistics.put("similar", similarIdeas.children().size());	
 			else
 				statistics.put("similar", 0);
+			
+			//Get attachments
+			Element attachments = doc.getElementById(IDEA_ATTACHMENTS_ID);
+			if (attachments != null)
+				statistics.put("attachments", attachments.children().size());
+			else
+				statistics.put("attachments", 0);
 		}
 		return statistics;
 	}

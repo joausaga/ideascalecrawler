@@ -687,8 +687,9 @@ public class DBManager {
 				"(ideascale_id, title, description, " +
 				"creation_datetime, tags, author_name, " +
 				"community_id, twitter, facebook, url, score, comments, " +
-				"similar_to, author_id, status, considered, page, list_pos) " +
-				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"similar_to, author_id, status, considered, page, list_pos, " +
+				"attachments) " +
+				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, idIdea);
 		preparedStatement.setString(2, (String) idea.get("title"));
 		if (idea.get("description") != null)
@@ -753,6 +754,7 @@ public class DBManager {
 		}
 		preparedStatement.setInt(17, (Integer) idea.get("page"));
 		preparedStatement.setInt(18, (Integer) idea.get("list_pos"));
+		preparedStatement.setInt(19, (Integer) idea.get("attachments"));
 		
 		preparedStatement.executeUpdate();
 		
@@ -765,7 +767,7 @@ public class DBManager {
 				"UPDATE ideas SET " +
 				"twitter = ?, facebook = ?, score = ?, " +
 				"comments = ?, similar_to = ?, status = ?, author_name = ?, " +
-				"considered = ?, page = ?, list_pos = ? " +
+				"considered = ?, page = ?, list_pos = ?, attachments = ? " +
 				"WHERE id = ?");
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
@@ -806,8 +808,9 @@ public class DBManager {
 			preparedStatement.setNull(7, java.sql.Types.NULL);
 		preparedStatement.setInt(9, (Integer) idea.get("page"));
 		preparedStatement.setInt(10, (Integer) idea.get("list_pos"));
+		preparedStatement.setInt(11, (Integer) idea.get("attachments"));
 		
-		preparedStatement.setInt(11, idIdea);
+		preparedStatement.setInt(12, idIdea);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
