@@ -39,7 +39,7 @@ public class StatisticReader extends HTMLReader {
 	private final static String IDEA_HREF_TAGS = "/a/ideas/tag/tags/";
 	private final static String HREF_ATTR = "href";
 	private final static String IDEA_SIMILAR_ID = "similar-idea-list";
-	private final static String IDEA_ATTACHMENTS_ID = "attachments";
+	private final static String IDEA_ATTACHMENTS_ID = "attachments-content";
 	
 	public StatisticReader() {
 		super();
@@ -168,7 +168,7 @@ public class StatisticReader extends HTMLReader {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
 		String fullURL = communityURL+ideaURLEncoded;
-		//String fullURL = "http://protools.ideascale.com/a/dtd/Freeze-tracks-feature/22400-3779";
+		//String fullURL = "http://eca-2014.ideascale.com/a/dtd/Park-Drive-esplanade/36759-27440";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -275,11 +275,15 @@ public class StatisticReader extends HTMLReader {
 				statistics.put("similar", 0);
 			
 			//Get attachments
-			Element attachments = doc.getElementById(IDEA_ATTACHMENTS_ID);
-			if (attachments != null)
-				statistics.put("attachments", attachments.children().size());
-			else
+			Element attachment = doc.getElementById(IDEA_ATTACHMENTS_ID);
+			if (attachment != null) {
+				Element attachments_list = attachment.child(0);
+				int numAttachments = attachments_list.children().size();
+				statistics.put("attachments", numAttachments);
+			}
+			else {
 				statistics.put("attachments", 0);
+			}
 		}
 		return statistics;
 	}
