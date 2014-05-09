@@ -207,6 +207,8 @@ public class CommunityInfoReader extends HTMLReader {
 												String authorName = vote.get("author-name");
 												if (!db.voteAlreadyExisting(authorId, authorName, idIdeaDB))
 													db.insertVote(vote, idIdeaDB, today);
+												else
+													db.updateVote(vote, idIdeaDB);
 											}
 										}
 									}
