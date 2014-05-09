@@ -1,5 +1,8 @@
 package api;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.logging.Logger;
 
@@ -18,10 +21,10 @@ import src.Util;
 
 public class TwitterApp {
 	private final static Logger logger = Logger.getLogger(TwitterApp.class.getName());
-	private static String ACCESSTOKEN = "156641445-h2WruI5Ha5Z6gyBWeyRrH1zp9VwBKJdPz5sCVzVK";
-	private static String ACCESSSECRET = "iH5VgiHOLEo6JYyZPPJZ4X94yFZDb2N9r7h8MN7R4PRVU";
-	private static String APIKEY = "qL2ne3j89Y6wbFbGq1FaA";
-	private static String APISECRET= "7ERg6sHqf7AaWAv4te8ZsDcQusx7Q27Nw93ZyU6k";
+	private String ACCESSTOKEN = "";
+	private String ACCESSSECRET = "";
+	private String APIKEY = "";
+	private String APISECRET= "";
 	protected OAuthConsumer consumer = null;
 	protected Integer remainingRequests;
 	protected Long limitReset;
@@ -30,10 +33,33 @@ public class TwitterApp {
 	
 	
 	public TwitterApp() {
+		setUp();
 		consumer = new CommonsHttpOAuthConsumer(APIKEY,APISECRET);
 		consumer.setTokenWithSecret(ACCESSTOKEN, ACCESSSECRET);
 		remainingRequests = API_LIMIT;
 		parser = new JSONParser();
+	}
+	
+	private void setUp() {
+		try {
+			BufferedReader buffReader = new BufferedReader(new FileReader("conf"));
+			String currentLine = buffReader.readLine(); //Discarding the first line since it contains indications
+			while ((currentLine = buffReader.readLine()) != null) {
+				if (currentLine.indexOf("TWACCESSTOKEN") != -1) {
+					ACCESSTOKEN = currentLine.split("=")[1];
+				} else if (currentLine.indexOf("TWACCESSSECRET") != -1) {
+					ACCESSSECRET = currentLine.split("=")[1];
+				} else if(currentLine.indexOf("TWAPIKEY") != -1) {
+					APIKEY = currentLine.split("=")[1];
+				} else if(currentLine.indexOf("TWAPISECRET") != -1) {
+					APISECRET = currentLine.split("=")[1];
+				}
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	protected HttpResponse pause(HttpGet httpGet) 
