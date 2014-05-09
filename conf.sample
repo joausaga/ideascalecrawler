@@ -1,0 +1,6 @@
+#Add yours credentials after the equality sign and rename the file as conf (without .sample)
+TWACCESSTOKEN=
+TWACCESSSECRET=
+TWAPIKEY=
+TWAPISECRET=
+GTAPIKEY=
