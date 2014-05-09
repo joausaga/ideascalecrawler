@@ -2,7 +2,10 @@ package web;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -11,6 +14,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
+import api.GTranslator;
 
 import src.Crawler;
 import src.Util;
@@ -40,10 +45,13 @@ public class StatisticReader extends HTMLReader {
 	private final static String HREF_ATTR = "href";
 	private final static String IDEA_SIMILAR_ID = "similar-idea-list";
 	private final static String IDEA_ATTACHMENTS_ID = "attachments-content";
+	private final static String MODERATOR_LIST_ID = "global-moderator-list";
+	private GTranslator translator = null;
 	
 	public StatisticReader() {
 		super();
 		prepareUserAgent();
+		translator = new GTranslator();
 	}
 	
 	public HashMap<String,Object> getCommunityStatistic(String url)  
@@ -61,6 +69,7 @@ public class StatisticReader extends HTMLReader {
 		statistics.put("logo", null);
 		statistics.put("explanation_text", null);
 		statistics.put("tabs", null);
+		statistics.put("moderators", null);
 		
 		String content;
 		String textElement;
@@ -139,6 +148,11 @@ public class StatisticReader extends HTMLReader {
 				textElement = explanation.text();
 				if (!textElement.isEmpty())
 					statistics.put("explanation_text", "yes");
+			}
+			
+			Element modList = doc.getElementById(MODERATOR_LIST_ID);
+			if (modList != null) {
+				statistics.put("moderators", modList.children().size());
 			}
 			
 			ArrayList<HashMap<String,String>> tabs = getTabsURL(doc);
@@ -260,7 +274,7 @@ public class StatisticReader extends HTMLReader {
 					else
 						throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
 					Element date = vote.getElementsByClass("vote").first().child(1);
-					voteMeta.put("date", date.text());
+					voteMeta.put("date", getDate(date.text()));
 					
 					votesMeta.add(voteMeta);
 				}
@@ -318,7 +332,7 @@ public class StatisticReader extends HTMLReader {
 				commentMeta.put("author-id", "-1");
 			}
 			Element date = comment.getElementsByAttributeValueMatching("class",IDEA_COMMENTS_DATE).first();
-			commentMeta.put("date", date.text());
+			commentMeta.put("date", getDate(date.text()));
 			Elements commentDesc = comment.getElementsByClass(IDEA_COMMENTS_DESCRIPTION);
 			String commentContent = "";
 			for (int i = 0; i < commentDesc.size(); i++) 
@@ -468,5 +482,51 @@ public class StatisticReader extends HTMLReader {
     		return false;
     	}
     	return true;
+    }
+    
+    private boolean englishDate(String date) {
+    	if (date.indexOf("hours") != -1 || date.indexOf("hour") != -1) {
+    		return true;
+    	} else if (date.indexOf("days") != -1 || date.indexOf("day") != -1) {
+    		return true;
+    	} else if (date.indexOf("months") != -1 || date.indexOf("month") != -1) {
+    		return true;
+    	} else if (date.indexOf("years") != -1 || date.indexOf("year") != -1) {
+    		return true;
+    	}
+    	return false;
+    }
+    
+    private String getDate(String vagueDate) {
+    	DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    	Calendar cal = Calendar.getInstance();
+        cal.setTime(cal.getTime());
+    	int i = 0;
+    	
+    	//Find the number
+    	while (!Character.isDigit(vagueDate.charAt(i))) i++;
+    	
+    	//Remove all non-numeric characters
+    	vagueDate = vagueDate.substring(i);
+    	
+    	int num = Integer.parseInt(vagueDate.replaceAll("[^0-9]+", " ").trim());
+    	
+    	String translatedText = "";
+    	if (!englishDate(vagueDate))
+    		translatedText = translator.translateText(vagueDate, "en");
+    	else
+    		translatedText = vagueDate;
+    	
+    	if (translatedText.indexOf("hours") != -1 || translatedText.indexOf("hour") != -1) {
+    		cal.add(Calendar.HOUR_OF_DAY, -num);
+    	} else if (translatedText.indexOf("days") != -1 || translatedText.indexOf("day") != -1) {
+    		cal.add(Calendar.DAY_OF_YEAR, -num);
+    	} else if (translatedText.indexOf("months") != -1 || translatedText.indexOf("month") != -1) {
+    		cal.add(Calendar.MONTH, -num);
+    	} else if (translatedText.indexOf("years") != -1 || translatedText.indexOf("year") != -1) {
+    		cal.add(Calendar.YEAR, -num);
+    	}
+    	
+    	return dateFormat.format(cal.getTime());
     }
 }
