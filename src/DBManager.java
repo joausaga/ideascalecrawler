@@ -5,9 +5,9 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -190,7 +190,8 @@ public class DBManager {
 				  							  "firstidea_ts = ?, lastidea_ts = ?, " +
 			      							  "lifespan = ?, status = ?, updated = ?, " +
 				  							  "facebook = ?, logo = ?, description = ?, " +
-				  							  "twitter = ?, url = ? " +
+				  							  "twitter = ?, url = ?, " +
+				  							  "moderators = ? " +
 			      							  "WHERE id = ?");
 		if (communityInfo.get("ideas") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) communityInfo.get("ideas")));
@@ -263,7 +264,12 @@ public class DBManager {
 		
 		preparedStatement.setString(17, (String) communityInfo.get("url"));
 		
-		preparedStatement.setInt(18, Integer.parseInt(idCommunity));
+		if (communityInfo.get("moderators") != null)
+			preparedStatement.setInt(18, (Integer) communityInfo.get("moderators"));
+		else
+			preparedStatement.setInt(18, java.sql.Types.INTEGER);
+		
+		preparedStatement.setInt(19, Integer.parseInt(idCommunity));
 		
 		preparedStatement.executeUpdate();
 	    preparedStatement.close();
@@ -276,7 +282,8 @@ public class DBManager {
 							"(name, url, ideas, ideas_in_review, ideas_in_progress," +
 							"ideas_implemented, members, votes, comments, " +
 							"firstidea_ts, lastidea_ts, lifespan, status, " +
-							"outlier, updated, facebook, logo, description, twitter) " +
+							"outlier, updated, facebook, logo, description, twitter," +
+							"moderators) " +
 							"values (?, ?, ?, ? , ?, ?, ?, ?, ?, " +
 							"?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setString(1, (String) community.get("name"));
@@ -349,7 +356,12 @@ public class DBManager {
 			preparedStatement.setInt(19, Integer.parseInt((String) community.get("twitter")));
 		else
 			preparedStatement.setNull(19, java.sql.Types.INTEGER);
-				
+		
+		if (community.get("moderators") != null)
+			preparedStatement.setInt(20, (Integer) community.get("moderators"));
+		else
+			preparedStatement.setNull(20, java.sql.Types.INTEGER);
+		
 		preparedStatement.executeUpdate();
 	    preparedStatement.close();
 	}
@@ -497,7 +509,9 @@ public class DBManager {
 	
 	public void insertComment(HashMap<String,String> comment, Integer idIdea, 
 							  Date storeDT) 
-	throws SQLException {
+	throws SQLException, ParseException {
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
 		preparedStatement = connection.prepareStatement("INSERT INTO comments " +
 														"(author_id, author_name, " +
 														"creation_datetime, description, " +
@@ -507,7 +521,9 @@ public class DBManager {
 														"values (?, ?, ?, ? , ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, Integer.parseInt(comment.get("author-id")));
 		preparedStatement.setString(2, comment.get("author-name"));
-		preparedStatement.setString(3, comment.get("date"));
+		Date dateUtil = formatter.parse(comment.get("date"));
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());
+		preparedStatement.setTimestamp(3, ideaDateTime);
 		preparedStatement.setString(4, comment.get("description"));
 		preparedStatement.setInt(5, Integer.parseInt(comment.get("id")));
 		preparedStatement.setInt(6, idIdea);
@@ -521,19 +537,27 @@ public class DBManager {
 	}
 	
 	public void updateComment(HashMap<String,String> comment, Integer idComment) 
-	throws SQLException {
+	throws SQLException, ParseException {
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
 		preparedStatement = connection.prepareStatement("UPDATE comments " +
-														"SET author_type = ? " +
+														"SET author_type = ?, " +
+														"creation_datetime = ? " +
 														"WHERE ideascale_id = ?");
 		preparedStatement.setString(1, comment.get("author-type"));
-		preparedStatement.setInt(2, idComment);
+		Date dateUtil = formatter.parse(comment.get("date"));
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
+		preparedStatement.setTimestamp(2, ideaDateTime);
+		preparedStatement.setInt(3, idComment);
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
 	
 	public void insertVote(HashMap<String,String> vote, Integer idIdea, Date storeDT) 
-	throws SQLException {
+	throws SQLException, ParseException {
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
 		preparedStatement = connection.prepareStatement("INSERT INTO votes " +
 														"(author_id, author_name, " +
 														"creation_datetime, value, " +
@@ -541,11 +565,29 @@ public class DBManager {
 														"values (?, ?, ?, ? , ?, ?)");
 		preparedStatement.setInt(1, Integer.parseInt(vote.get("author-id")));
 		preparedStatement.setString(2, vote.get("author-name"));
-		preparedStatement.setString(3, vote.get("date"));
+		Date dateUtil = formatter.parse(vote.get("date"));
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());
+		preparedStatement.setTimestamp(3, ideaDateTime);
 		preparedStatement.setString(4, vote.get("value"));
 		preparedStatement.setInt(5, idIdea);
 		java.sql.Timestamp storeDateTime = new java.sql.Timestamp(storeDT.getTime());				
 		preparedStatement.setTimestamp(6, storeDateTime);
+		
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public void updateVote(HashMap<String,String> vote, Integer idIdea) 
+	throws SQLException, ParseException {
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
+		preparedStatement = connection.prepareStatement("UPDATE votes " +
+														"SET creation_datetime = ? " +
+														"WHERE idea_id = ?");
+		Date dateUtil = formatter.parse(vote.get("date"));
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
+		preparedStatement.setTimestamp(1, ideaDateTime);
+		preparedStatement.setInt(2, idIdea);
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
@@ -633,7 +675,8 @@ public class DBManager {
 				  										"votes = ?, ideas_in_review = ?, " +
 				  										"ideas_in_progress = ?, " +
 				  										"ideas_implemented = ?, " +
-				  										"members = ? " +
+				  										"members = ?, " +
+				  										"moderators = ? " +
 				  										"WHERE id = ?");
 		if (stats.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) stats.get("twitter")));
@@ -671,7 +714,11 @@ public class DBManager {
 			preparedStatement.setInt(9, Integer.parseInt((String) stats.get("members")));
 		else
 			preparedStatement.setNull(9, java.sql.Types.INTEGER);
-		preparedStatement.setString(10, (String) idCommunity);
+		if (stats.get("moderators") != null)
+			preparedStatement.setInt(10, (Integer) stats.get("moderators"));
+		else
+			preparedStatement.setNull(10, java.sql.Types.INTEGER);
+		preparedStatement.setString(11, (String) idCommunity);
 		
 		preparedStatement.executeUpdate();
 	    preparedStatement.close();
