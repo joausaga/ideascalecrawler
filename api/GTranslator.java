@@ -50,13 +50,12 @@ public class GTranslator {
 		}
 	}
 	
-	public String translateText(String text, String targetLang) 
+	public String translateText(String text, String sourceLang, String targetLang) 
 	{
 		String translatedText = "";
 		
 		try {
 			text = URLEncoder.encode(text,"utf-8");
-			String sourceLang = detectSourceLanguage(text);
 			
 			if (!sourceLang.isEmpty()) {
 				String fullURL = REQUESTURL+"?key="+APIKEY+"&q="+text+"&source="+
@@ -105,9 +104,10 @@ public class GTranslator {
 		return translatedText;
 	}
 	
-	private String detectSourceLanguage(String text) 
+	public String detectSourceLanguage(String text) 
 	throws ClientProtocolException, IOException, ParseException 
 	{
+		text = URLEncoder.encode(text,"utf-8");
 		String sourceLang = "";
 		
 		String fullURL = REQUESTURL+"/detect?key="+APIKEY+"&q="+text;
