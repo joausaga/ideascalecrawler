@@ -177,7 +177,8 @@ public class StatisticReader extends HTMLReader {
 	}
 	
 	public HashMap<String,Object> getIdeaStatistics(String communityURL,
-													String ideaURL) 
+													String ideaURL, 
+													String communityLang) 
 	throws Exception {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
@@ -230,7 +231,7 @@ public class StatisticReader extends HTMLReader {
 			if (comments != null) {
 				statistics.put("comments", comments.children().size());
 				ArrayList<HashMap<String,String>> commentsMeta = new ArrayList<HashMap<String,String>>();
-				commentsMeta = getComments(comments,commentsMeta,"-1");
+				commentsMeta = getComments(comments,commentsMeta,"-1", communityLang);
 				statistics.put("comments-meta", commentsMeta);
 			}
 			else {
@@ -274,7 +275,7 @@ public class StatisticReader extends HTMLReader {
 					else
 						throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
 					Element date = vote.getElementsByClass("vote").first().child(1);
-					voteMeta.put("date", getDate(date.text()));
+					voteMeta.put("date", getDate(date.text(), communityLang));
 					
 					votesMeta.add(voteMeta);
 				}
@@ -304,7 +305,9 @@ public class StatisticReader extends HTMLReader {
 	
 	private ArrayList<HashMap<String,String>> getComments(Element rootComments,
 														  ArrayList<HashMap<String,String>> commentsMeta,
-														  String parent) {
+														  String parent, 
+														  String language) 
+	{
 		
 		for (Element comment : rootComments.children()) {
 			HashMap<String,String> commentMeta = new HashMap<String,String>();
@@ -312,7 +315,7 @@ public class StatisticReader extends HTMLReader {
 			Elements childComments = comment.getElementsByClass("child-comments"); 
 			if (!childComments.isEmpty()) {
 				for (int i = 0; i < childComments.size(); i++)
-					getComments(childComments.get(i),commentsMeta,commentId);
+					getComments(childComments.get(i),commentsMeta,commentId, language);
 			}
 			commentMeta.put("id", commentId);
 			Elements commenter = comment.getElementsByClass(IDEA_COMMENT_AUTHOR_NAME);
@@ -332,7 +335,7 @@ public class StatisticReader extends HTMLReader {
 				commentMeta.put("author-id", "-1");
 			}
 			Element date = comment.getElementsByAttributeValueMatching("class",IDEA_COMMENTS_DATE).first();
-			commentMeta.put("date", getDate(date.text()));
+			commentMeta.put("date", getDate(date.text(),language));
 			Elements commentDesc = comment.getElementsByClass(IDEA_COMMENTS_DESCRIPTION);
 			String commentContent = "";
 			for (int i = 0; i < commentDesc.size(); i++) 
@@ -497,7 +500,7 @@ public class StatisticReader extends HTMLReader {
     	return false;
     }
     
-    private String getDate(String vagueDate) {
+    private String getDate(String vagueDate, String communityLanguage) {
     	DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     	Calendar cal = Calendar.getInstance();
         cal.setTime(cal.getTime());
@@ -513,7 +516,7 @@ public class StatisticReader extends HTMLReader {
     	
     	String translatedText = "";
     	if (!englishDate(vagueDate))
-    		translatedText = translator.translateText(vagueDate, "en");
+    		translatedText = translator.translateText(vagueDate, communityLanguage, "en");
     	else
     		translatedText = vagueDate;
     	

@@ -79,9 +79,9 @@ public class CommunityInfoReader extends HTMLReader {
 					remainingTabs.add(tab);
 				}
 			}
-			
+			String lang = db.getCommunityLanguage(communityId);
 			info = syncIdeas(communityURL, communityId, remainingTabs, 
-							 currentPage, db, observation);
+							 currentPage, db, observation, lang);
 		}
 		
 		return info;
@@ -90,7 +90,8 @@ public class CommunityInfoReader extends HTMLReader {
 	public ArrayList<HashMap<String,Object>> syncIdeas(String communityURL, Integer communityId,
 						  							    ArrayList<HashMap<String,String>> tabs, 
 						  							    Integer currentPageNum, DBManager db,
-						  							    Integer observation) 
+						  							    Integer observation, 
+						  							    String communityLang) 
 	throws Exception 
 	{
 		Integer pageNum = currentPageNum;
@@ -130,7 +131,7 @@ public class CommunityInfoReader extends HTMLReader {
 							if (!ideaTitleElems.isEmpty()) {
 								Element ideaTitle = ideaTitleElems.first();
 								String ideaLink = ideaTitle.child(0).attr("href");
-								HashMap<String,Object> ideaStats = statsReader.getIdeaStatistics(communityURL,ideaLink);
+								HashMap<String,Object> ideaStats = statsReader.getIdeaStatistics(communityURL,ideaLink, communityLang);
 								//If every property of the hashmap is null the idea is inaccessible
 								if (!(ideaStats.get("tags") == null && ideaStats.get("facebook") == null &&
 									ideaStats.get("twitter") == null && ideaStats.get("comments") == null &&
