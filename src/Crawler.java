@@ -15,6 +15,7 @@ import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.http.client.ClientProtocolException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -220,7 +221,9 @@ public class Crawler {
 				exit();
 			}
             else if(op==7) {
-				System.out.println(test("Il y a 2 ans"));
+            	createExecutionFile();
+            	updateUnknwonLanguageCommunities();
+            	exit();
 			}
 			else {
 				Util.printMessage("Unknown background option: " + op,"severe",logger);
@@ -233,52 +236,6 @@ public class Crawler {
 			exit();
 			System.exit(1);
 		}
-	}
-	
-	private static boolean englishDate(String date) {
-    	if (date.indexOf("hours") != -1 || date.indexOf("hour") != -1) {
-    		return true;
-    	} else if (date.indexOf("days") != -1 || date.indexOf("day") != -1) {
-    		return true;
-    	} else if (date.indexOf("months") != -1 || date.indexOf("month") != -1) {
-    		return true;
-    	} else if (date.indexOf("years") != -1 || date.indexOf("year") != -1) {
-    		return true;
-    	}
-    	return false;
-    }
-	
-	private static String test(String vagueDate) {
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    	Calendar cal = Calendar.getInstance();
-        cal.setTime(cal.getTime());
-    	int i = 0;
-    	
-    	//Find the number
-    	while (!Character.isDigit(vagueDate.charAt(i))) i++;
-    	
-    	//Remove all non-numeric characters
-    	vagueDate = vagueDate.substring(i);
-    	
-    	int num = Integer.parseInt(vagueDate.replaceAll("[^0-9]+", " ").trim());
-    	
-    	String translatedText = "";
-    	if (!englishDate(vagueDate))
-    		translatedText = translator.translateText(vagueDate, "en");
-    	else
-    		translatedText = vagueDate;
-    	
-    	if (translatedText.indexOf("hours") != -1 || translatedText.indexOf("hour") != -1) {
-    		cal.add(Calendar.HOUR_OF_DAY, -num);
-    	} else if (translatedText.indexOf("days") != -1 || translatedText.indexOf("day") != -1) {
-    		cal.add(Calendar.DAY_OF_YEAR, -num);
-    	} else if (translatedText.indexOf("months") != -1 || translatedText.indexOf("month") != -1) {
-    		cal.add(Calendar.MONTH, -num);
-    	} else if (translatedText.indexOf("years") != -1 || translatedText.indexOf("year") != -1) {
-    		cal.add(Calendar.YEAR, -num);
-    	}
-    	
-    	return dateFormat.format(cal.getTime());
 	}
 	
 	private static void createExecutionFile() {
@@ -676,26 +633,27 @@ public class Crawler {
 	}
 	
 	private static void resumeUnfinishedProcess(HashMap<String,Object> unfinishedProcess,
-															 Date today) 
+												Date today) 
 	throws Exception {
 		commInfoReader.resumeSyncProcess(unfinishedProcess, db);
 	}
 	
 	private static boolean syncCommunitySnStatsAndIdeas(HashMap<String,String> community,
-										  			 Integer observation) 
+										  			    Integer observation) 
 	throws Exception 
 	{
 		HashMap<String,Object> communityStats = null;
 		
 		String url = community.get("url");
 		String communityId = community.get("id");
+		String lang = community.get("language");
 		
 		communityStats = commInfoReader.syncCommunityStats(communityId, url, db);
 		if (communityStats.get("status").equals("active")) {
 			checkIncrementSNCounters(observation,community,communityStats);
 		
 			ArrayList<HashMap<String,String>> tabs = (ArrayList<HashMap<String,String>>) communityStats.get("tabs");
-			commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db, observation);
+			commInfoReader.syncIdeas(url, Integer.parseInt(communityId), tabs, 0, db, observation, lang);
 			
 			return true;
 		}
@@ -874,6 +832,25 @@ public class Crawler {
 		//Wait for a moment to avoid being banned
 		double rand = Math.random() * 5;		        			
 		Thread.sleep((long) (rand * 1000));
+	}
+	
+	public static void updateUnknwonLanguageCommunities() {
+		try {
+			ArrayList<Integer> communityIds = db.getUnknownLaguageCommunities();
+			for (Integer communityId : communityIds) {
+				String ideaDesc = db.getUnknownLanguageIdea(communityId);
+				String lang = translator.detectSourceLanguage(ideaDesc);
+				db.updateCommunityLanguage(communityId,lang);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} catch (ClientProtocolException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (org.json.simple.parser.ParseException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	/*public static void checkCommunitiesExistence(CommunityInfoReader commInfoReader,
