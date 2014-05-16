@@ -546,7 +546,7 @@ public class DBManager {
 														"WHERE ideascale_id = ?");
 		preparedStatement.setString(1, comment.get("author-type"));
 		Date dateUtil = formatter.parse(comment.get("date"));
-		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
+		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());
 		preparedStatement.setTimestamp(2, ideaDateTime);
 		preparedStatement.setInt(3, idComment);
 		
@@ -601,7 +601,7 @@ public class DBManager {
 		preparedStatement = connection.prepareStatement("SELECT id, name, url, " +
 														"facebook, twitter, " +
 														"ideas, comments, votes, " +
-														"members " +
+														"members, language " +
 														"FROM communities " +
 			    										"WHERE status = ? AND " +
 			    										"facebook IS NOT ? AND " +
@@ -622,6 +622,7 @@ public class DBManager {
 			community.put("comments", resultSet.getString("comments"));
 			community.put("votes", resultSet.getString("votes"));
 			community.put("members", resultSet.getString("members"));
+			community.put("language", resultSet.getString("language"));
 			activeCommunities.add(community);
 		}
 		
@@ -1189,5 +1190,67 @@ public class DBManager {
 		resultSet.close();
 		
 		return observation;
+	}
+	
+	public ArrayList<Integer> getUnknownLaguageCommunities() 
+	throws SQLException 
+	{
+		ArrayList<Integer> communities = new ArrayList<Integer>();
+
+		preparedStatement = connection.prepareStatement("SELECT id " +
+														"FROM communities " +
+														"WHERE language IS NULL");
+		
+		resultSet = preparedStatement.executeQuery();
+		while (resultSet.next()) {
+			communities.add(resultSet.getInt("id"));
+		}
+		
+		resultSet.close();
+		preparedStatement.close();
+		
+		return communities;
+	}
+	
+	public String getUnknownLanguageIdea(int id) 
+	throws SQLException {
+		String ideaDesc = "";
+		
+		preparedStatement = connection.prepareStatement("SELECT description " +
+														"FROM ideas " +
+														"WHERE community_id = ? " +
+														"LIMIT 1, 1");
+		preparedStatement.setInt(1, id);
+		resultSet = preparedStatement.executeQuery();
+		if (resultSet.first()) {
+			ideaDesc = resultSet.getString("description");
+		}
+		
+		return ideaDesc;
+	}
+	
+	public void updateCommunityLanguage(int id, String lang) 
+	throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE communities " +
+														"SET language = ? " +
+														"WHERE id = ?");
+		preparedStatement.setString(1, lang);
+		preparedStatement.setInt(2, id);
+		preparedStatement.executeUpdate();
+	    preparedStatement.close();
+	}
+	
+	public String getCommunityLanguage(int id) throws SQLException {
+		String lang = "";
+		preparedStatement = connection.prepareStatement("SELECT language " +
+														"FROM communities " +
+														"WHERE id = ?");
+		preparedStatement.setInt(1, id);
+		resultSet = preparedStatement.executeQuery();
+		if (resultSet.first()) {
+			lang = resultSet.getString("language");
+		}
+		
+		return lang;
 	}
 }
