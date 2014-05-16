@@ -21,6 +21,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import web.CommunityInfoReader;
+import api.GTranslator;
 import api.TweetSearch;
 import api.TweetUpdater;
 
@@ -35,6 +36,7 @@ public class Crawler {
 	private final static String IDEASCALE_BASE_URL = "https://ideascale.com/index/";
 	private static final String EXECUTIONFILE = "running.lck";
 	private static final String ERRORFILE = "error.lck";
+	private static GTranslator translator = null;
 	
 	public static void init() {
 		commInfoReader = new CommunityInfoReader();
@@ -45,6 +47,7 @@ public class Crawler {
 				  	"d","e","f","g","h","i","j","k","l","m","n","o",
 				  	"p","q","r","s","t","u","v","w","x","y","z"));
 		user_input = new Scanner(System.in);
+		translator = new GTranslator();
 		//logger.setLevel(Level.SEVERE);
 		try {
 			CrawlLogger.setup();
@@ -216,6 +219,9 @@ public class Crawler {
             	downloadInfoCPCommunities();
 				exit();
 			}
+            else if(op==7) {
+				System.out.println(test("Il y a 2 ans"));
+			}
 			else {
 				Util.printMessage("Unknown background option: " + op,"severe",logger);
 				exit();
@@ -227,6 +233,52 @@ public class Crawler {
 			exit();
 			System.exit(1);
 		}
+	}
+	
+	private static boolean englishDate(String date) {
+    	if (date.indexOf("hours") != -1 || date.indexOf("hour") != -1) {
+    		return true;
+    	} else if (date.indexOf("days") != -1 || date.indexOf("day") != -1) {
+    		return true;
+    	} else if (date.indexOf("months") != -1 || date.indexOf("month") != -1) {
+    		return true;
+    	} else if (date.indexOf("years") != -1 || date.indexOf("year") != -1) {
+    		return true;
+    	}
+    	return false;
+    }
+	
+	private static String test(String vagueDate) {
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    	Calendar cal = Calendar.getInstance();
+        cal.setTime(cal.getTime());
+    	int i = 0;
+    	
+    	//Find the number
+    	while (!Character.isDigit(vagueDate.charAt(i))) i++;
+    	
+    	//Remove all non-numeric characters
+    	vagueDate = vagueDate.substring(i);
+    	
+    	int num = Integer.parseInt(vagueDate.replaceAll("[^0-9]+", " ").trim());
+    	
+    	String translatedText = "";
+    	if (!englishDate(vagueDate))
+    		translatedText = translator.translateText(vagueDate, "en");
+    	else
+    		translatedText = vagueDate;
+    	
+    	if (translatedText.indexOf("hours") != -1 || translatedText.indexOf("hour") != -1) {
+    		cal.add(Calendar.HOUR_OF_DAY, -num);
+    	} else if (translatedText.indexOf("days") != -1 || translatedText.indexOf("day") != -1) {
+    		cal.add(Calendar.DAY_OF_YEAR, -num);
+    	} else if (translatedText.indexOf("months") != -1 || translatedText.indexOf("month") != -1) {
+    		cal.add(Calendar.MONTH, -num);
+    	} else if (translatedText.indexOf("years") != -1 || translatedText.indexOf("year") != -1) {
+    		cal.add(Calendar.YEAR, -num);
+    	}
+    	
+    	return dateFormat.format(cal.getTime());
 	}
 	
 	private static void createExecutionFile() {
