@@ -90,16 +90,19 @@ public class StatisticReader extends HTMLReader {
 			if (otherStats != null) {
 				Elements childrenStats = otherStats.children();
 				textElement = replaceThounsandSymbol(childrenStats.get(0).text());
+				textElement = textElement.replaceAll("[^0-9]+", " ").trim();
 				if (isNumeric(textElement))
 					statistics.put("comments", textElement);
 				else
 					throw new Exception("The comments counter is not numeric. Community: " + url);
 				textElement = replaceThounsandSymbol(childrenStats.get(1).text());
+				textElement = textElement.replaceAll("[^0-9]+", " ").trim();
 				if (isNumeric(textElement))
 					statistics.put("votes",textElement);
 				else
 					throw new Exception("The votes counter is not numeric. Community: " + url);
 				textElement = replaceThounsandSymbol(childrenStats.get(2).text());
+				textElement = textElement.replaceAll("[^0-9]+", " ").trim();
 				if (isNumeric(textElement))
 					statistics.put("members", textElement);
 				else
