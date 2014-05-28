@@ -607,6 +607,16 @@ public class DBManager {
 			    										"facebook IS NOT ? AND " +
 			    										"synchronized = ? " +
 			    										"ORDER BY ideas ASC");
+		
+		/*preparedStatement = connection.prepareStatement("SELECT id, name, url, " +
+														"facebook, twitter, " +
+														"ideas, comments, votes, " +
+														"members, language " +
+														"FROM communities " +
+														"WHERE orientation = 'Civic Participation'" +
+														"AND id in (367, 394, 401, 402, 404, 411, 413, 414," +
+														"416, 426, 454, 465, 476, 479, 490)");*/
+		
 		preparedStatement.setString(1, "active");
 		preparedStatement.setString(2, null);
 		preparedStatement.setBoolean(3, false);
@@ -640,11 +650,13 @@ public class DBManager {
 		preparedStatement = connection.prepareStatement("SELECT id, name, url, " +
 														"facebook, twitter, " +
 														"ideas, comments, votes, " +
-														"members " +
+														"members, language " +
 														"FROM communities " +
 			    										"WHERE orientation = ? " +
+			    										"AND synchronized = ? " +
 			    										"ORDER BY ideas ASC");
 		preparedStatement.setString(1, "Civic Participation");
+		preparedStatement.setBoolean(2, false);
 		resultSet = preparedStatement.executeQuery();
 		while (resultSet.next()) {
 			HashMap<String,String> community = new HashMap<String,String>();
@@ -657,6 +669,7 @@ public class DBManager {
 			community.put("comments", resultSet.getString("comments"));
 			community.put("votes", resultSet.getString("votes"));
 			community.put("members", resultSet.getString("members"));
+			community.put("language", resultSet.getString("language"));
 			cpCommunities.add(community);
 		}
 		
@@ -1023,6 +1036,16 @@ public class DBManager {
 		preparedStatement = connection.prepareStatement("UPDATE communities SET " +
 														"synchronized = ?");
 		preparedStatement.setBoolean(1, false);
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public void resetCPSyncFlag() throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE communities SET " +
+														"synchronized = ? " +
+														"WHERE orientation = ?");
+		preparedStatement.setBoolean(1, false);
+		preparedStatement.setString(2, "Civic Participation");
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}

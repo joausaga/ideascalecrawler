@@ -156,7 +156,8 @@ public class Crawler {
 			exit();
 		}
         else if(option.equals("6")) {
-        	downloadInfoCPCommunities();
+        	String opSync = user_input.next();
+        	downloadInfoCPCommunities(opSync);
 			exit();
 		}
 		else {
@@ -217,7 +218,7 @@ public class Crawler {
 				exit();
 			}
             else if(op == 6) {
-            	downloadInfoCPCommunities();
+            	downloadInfoCPCommunities(args[2]);
 				exit();
 			}
             else if(op==7) {
@@ -536,33 +537,39 @@ public class Crawler {
 		}
 	}
 	
-    private static void downloadInfoCPCommunities() {
+    private static void downloadInfoCPCommunities(String opSync) {
 		long startingTime = 0;
 		ArrayList<HashMap<String, String>> cpCommunities;
 		Calendar cal = Calendar.getInstance();
 		Date today = cal.getTime();
 		
 		try {
-			//Before starting check whether exists unfinished processes and finishing them
-			HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
-			if (!unfinishedProcess.isEmpty()) {
-				startingTime = System.currentTimeMillis();
-				//1: Resume the unfinished process
-				resumeUnfinishedProcess(unfinishedProcess, today);
-				HashMap<String,String> unfinishedCommunity = new HashMap<String,String>();
-				unfinishedCommunity.put("id", unfinishedProcess.get("community_id").toString());
-				unfinishedCommunity.put("url", unfinishedProcess.get("community_url").toString());
-				unfinishedCommunity.put("tab", unfinishedProcess.get("current_tab").toString());
-				//2: Save Tweets of unfinished community
-				saveCommunityTweets(unfinishedCommunity);
-				//3: Save Tweets of unfinished community ideas
-				saveCommunityIdeasTweets(unfinishedCommunity,-1);
-				//4: Finishing synchronization of the unfinished process
-				finishCommunitySync(startingTime, unfinishedCommunity.get("url"),
-								    unfinishedCommunity.get("id"), today,
-								    -1);
-				//5: Pause for a moment to avoid being banned
-				pause();
+			if (opSync.equals("1")) {
+				db.resetCPSyncFlag();
+				db.cleanSyncProgressTable();
+			}
+			else {
+				//Before starting check whether exists unfinished processes and finishing them
+				HashMap<String,Object> unfinishedProcess = db.getUnfinishedSyncProcess();
+				if (!unfinishedProcess.isEmpty()) {
+					startingTime = System.currentTimeMillis();
+					//1: Resume the unfinished process
+					resumeUnfinishedProcess(unfinishedProcess, today);
+					HashMap<String,String> unfinishedCommunity = new HashMap<String,String>();
+					unfinishedCommunity.put("id", unfinishedProcess.get("community_id").toString());
+					unfinishedCommunity.put("url", unfinishedProcess.get("community_url").toString());
+					unfinishedCommunity.put("tab", unfinishedProcess.get("current_tab").toString());
+					//2: Save Tweets of unfinished community
+					saveCommunityTweets(unfinishedCommunity);
+					//3: Save Tweets of unfinished community ideas
+					saveCommunityIdeasTweets(unfinishedCommunity,-1);
+					//4: Finishing synchronization of the unfinished process
+					finishCommunitySync(startingTime, unfinishedCommunity.get("url"),
+									    unfinishedCommunity.get("id"), today,
+									    -1);
+					//5: Pause for a moment to avoid being banned
+					pause();
+				}
 			}
 			cpCommunities = db.getCivicParticipationCommunities();
 			System.out.println("");
