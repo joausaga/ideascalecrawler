@@ -1,11 +1,15 @@
 package web;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -15,10 +19,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import api.GTranslator;
-
 import src.Crawler;
 import src.Util;
+import api.GTranslator;
 
 
 public class StatisticReader extends HTMLReader {
@@ -46,12 +49,15 @@ public class StatisticReader extends HTMLReader {
 	private final static String IDEA_SIMILAR_ID = "similar-idea-list";
 	private final static String IDEA_ATTACHMENTS_ID = "attachments-content";
 	private final static String MODERATOR_LIST_ID = "global-moderator-list";
+	private final static String IDEA_CREATION_TIME = "published";
 	private GTranslator translator = null;
+	DateFormat dateFormat = null;
 	
 	public StatisticReader() {
 		super();
 		prepareUserAgent();
 		translator = new GTranslator();
+		dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	}
 	
 	public HashMap<String,Object> getCommunityStatistic(String url)  
@@ -186,7 +192,7 @@ public class StatisticReader extends HTMLReader {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
 		String fullURL = communityURL+ideaURLEncoded;
-		//String fullURL = "http://eca-2014.ideascale.com/a/dtd/Park-Drive-esplanade/36759-27440";
+		//String fullURL = "http://lucysalinas2012.ideascale.com/a/dtd/Tenencia-Responsable-de-mascotas/222742-19774";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -224,6 +230,15 @@ public class StatisticReader extends HTMLReader {
 			else {
 				statistics.put("tags", null);
 			}
+			
+			//Date
+			Elements ideaDTElems = doc.getElementsByClass(IDEA_CREATION_TIME);
+			Date ideaDateTime = null;
+			if (!ideaDTElems.isEmpty()) {
+				String[] ideaDT = ideaDTElems.first().attr("title").split("T");
+				ideaDateTime = dateFormat.parse(ideaDT[0]+" "+ideaDT[1].split("-")[0]);
+			}
+			
 			//Social Networks
 			HashMap<String,Object> auxStats = getIdeaSNCounters(doc,fullURL);
 			statistics.put("facebook", auxStats.get("facebook"));
@@ -234,7 +249,7 @@ public class StatisticReader extends HTMLReader {
 			if (comments != null) {
 				statistics.put("comments", comments.children().size());
 				ArrayList<HashMap<String,String>> commentsMeta = new ArrayList<HashMap<String,String>>();
-				commentsMeta = getComments(comments,commentsMeta,"-1", communityLang);
+				commentsMeta = getComments(comments,commentsMeta,"-1", communityLang, ideaDateTime);
 				statistics.put("comments-meta", commentsMeta);
 			}
 			else {
@@ -278,7 +293,7 @@ public class StatisticReader extends HTMLReader {
 					else
 						throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
 					Element date = vote.getElementsByClass("vote").first().child(1);
-					voteMeta.put("date", getDate(date.text(), communityLang));
+					voteMeta.put("date", getDate(date.text(), communityLang, ideaDateTime));
 					
 					votesMeta.add(voteMeta);
 				}
@@ -309,7 +324,9 @@ public class StatisticReader extends HTMLReader {
 	private ArrayList<HashMap<String,String>> getComments(Element rootComments,
 														  ArrayList<HashMap<String,String>> commentsMeta,
 														  String parent, 
-														  String language) 
+														  String language,
+														  Date ideaDateTime) 
+	throws UnsupportedEncodingException 
 	{
 		
 		for (Element comment : rootComments.children()) {
@@ -318,13 +335,14 @@ public class StatisticReader extends HTMLReader {
 			Elements childComments = comment.getElementsByClass("child-comments"); 
 			if (!childComments.isEmpty()) {
 				for (int i = 0; i < childComments.size(); i++)
-					getComments(childComments.get(i),commentsMeta,commentId, language);
+					getComments(childComments.get(i),commentsMeta,commentId, language, ideaDateTime);
 			}
 			commentMeta.put("id", commentId);
 			Elements commenter = comment.getElementsByClass(IDEA_COMMENT_AUTHOR_NAME);
 			if (commenter.first().children().size() > 0) {
 				Element eAuthor = commenter.first().child(0);
-				commentMeta.put("author-name", eAuthor.text());
+				String authorName = eAuthor.text();
+				commentMeta.put("author-name", authorName);
 				String authorId = eAuthor.attr(HREF_ATTR);
 				authorId = authorId.substring(authorId.lastIndexOf("/")+1,authorId.length());
 				authorId = authorId.split("-")[0];
@@ -338,7 +356,7 @@ public class StatisticReader extends HTMLReader {
 				commentMeta.put("author-id", "-1");
 			}
 			Element date = comment.getElementsByAttributeValueMatching("class",IDEA_COMMENTS_DATE).first();
-			commentMeta.put("date", getDate(date.text(),language));
+			commentMeta.put("date", getDate(date.text(),language,ideaDateTime));
 			Elements commentDesc = comment.getElementsByClass(IDEA_COMMENTS_DESCRIPTION);
 			String commentContent = "";
 			for (int i = 0; i < commentDesc.size(); i++) 
@@ -396,7 +414,7 @@ public class StatisticReader extends HTMLReader {
 		if (!frameTag.isEmpty()) {
 			Element facebookTag = frameTag.first();   //Should be the Facebook one. WARNING.
 			String urlSN = facebookTag.attr("src");
-			String content = getUrlContent(Util.toURI(urlSN));
+			String content = getUrlContent(Util.toURI("https:"+urlSN));
 			docSN = Jsoup.parse(content);
 			Element facebookStats = docSN.getElementById(FACEBOOK_STATS);
 			if (facebookStats != null) {
@@ -444,7 +462,7 @@ public class StatisticReader extends HTMLReader {
 			Elements facebookTag = facebook.first().getElementsByTag(FRAME_TAG);
 			urlSN = facebookTag.first().attr("src");
 			urlSN = URLDecoder.decode(urlSN, "UTF-8");
-			content = getUrlContent(Util.toURI(urlSN));
+			content = getUrlContent(Util.toURI("https:"+urlSN));
 			docSN = Jsoup.parse(content);
 			Elements facebookStats = docSN.getElementsByClass("pluginCountTextDisconnected");
 			if (!facebookStats.isEmpty()) {
@@ -503,8 +521,7 @@ public class StatisticReader extends HTMLReader {
     	return false;
     }
     
-    private String getDate(String vagueDate, String communityLanguage) {
-    	DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private String getDate(String vagueDate, String communityLanguage, Date ideaDateTime) {
     	Calendar cal = Calendar.getInstance();
         cal.setTime(cal.getTime());
     	int i = 0;
@@ -532,6 +549,19 @@ public class StatisticReader extends HTMLReader {
     	} else if (translatedText.indexOf("years") != -1 || translatedText.indexOf("year") != -1) {
     		cal.add(Calendar.YEAR, -num);
     	}
+    	
+    	return getRandDate(cal.getTime(),ideaDateTime,cal);
+    }
+    
+    private String getRandDate(Date maxDate, Date ideaDate, Calendar cal) {
+    	cal.setTime(ideaDate);
+        Long start = cal.getTimeInMillis();
+
+        cal.setTime(maxDate);
+        Long end = cal.getTimeInMillis();
+
+        long value3 = (long)(start + Math.random()*(end - start));
+        cal.setTimeInMillis(value3);
     	
     	return dateFormat.format(cal.getTime());
     }
