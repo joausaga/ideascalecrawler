@@ -17,8 +17,6 @@ import org.apache.http.impl.client.HttpClients;
 
 import src.Util;
 
-import api.TweetSearch;
-
 import com.sun.tools.javac.util.Context;
 
 public class HTMLReader {
@@ -112,7 +110,7 @@ public class HTMLReader {
             }
             
             // Return result from buffered stream
-            return new String(content.toByteArray());
+            return new String(content.toByteArray(),"utf-8");
         } catch (IOException e) {
             throw new Exception("Communication problems", e);
         }
