@@ -80,6 +80,7 @@ public class StatisticReader extends HTMLReader {
 		String content;
 		String textElement;
 		try {
+			//url = "http://midata.ideascale.com";
 			content = getUrlContent(Util.toURI(url));
 			Document doc = Jsoup.parse(content);		       
 			
@@ -95,19 +96,25 @@ public class StatisticReader extends HTMLReader {
 			Element otherStats = doc.getElementById(OTHER_STATS);
 			if (otherStats != null) {
 				Elements childrenStats = otherStats.children();
-				textElement = replaceThounsandSymbol(childrenStats.get(0).text());
+				textElement = replaceThounsandSymbol(childrenStats.get(0).
+													 getElementsByClass("number").
+													 get(0).text());
 				textElement = textElement.replaceAll("[^0-9]+", " ").trim();
 				if (isNumeric(textElement))
 					statistics.put("comments", textElement);
 				else
 					throw new Exception("The comments counter is not numeric. Community: " + url);
-				textElement = replaceThounsandSymbol(childrenStats.get(1).text());
+				textElement = replaceThounsandSymbol(childrenStats.get(1).
+						 							 getElementsByClass("number").
+						 							 get(0).text());
 				textElement = textElement.replaceAll("[^0-9]+", " ").trim();
 				if (isNumeric(textElement))
 					statistics.put("votes",textElement);
 				else
 					throw new Exception("The votes counter is not numeric. Community: " + url);
-				textElement = replaceThounsandSymbol(childrenStats.get(2).text());
+				textElement = replaceThounsandSymbol(childrenStats.get(2).
+						 							 getElementsByClass("number").
+						 							 get(0).text());
 				textElement = textElement.replaceAll("[^0-9]+", " ").trim();
 				if (isNumeric(textElement))
 					statistics.put("members", textElement);
@@ -237,6 +244,8 @@ public class StatisticReader extends HTMLReader {
 			if (!ideaDTElems.isEmpty()) {
 				String[] ideaDT = ideaDTElems.first().attr("title").split("T");
 				ideaDateTime = dateFormat.parse(ideaDT[0]+" "+ideaDT[1].split("-")[0]);
+				HashMap<String,String> dates = getDate(ideaDTElems.get(0).text(), communityLang, ideaDateTime); 
+				statistics.put("idea_platform_datetime", dates.get("platform"));
 			}
 			
 			//Social Networks
@@ -293,7 +302,9 @@ public class StatisticReader extends HTMLReader {
 					else
 						throw new Exception("Couldn't understand vote value " + type.getElementsByTag("strong").text());
 					Element date = vote.getElementsByClass("vote").first().child(1);
-					voteMeta.put("date", getDate(date.text(), communityLang, ideaDateTime));
+					HashMap<String,String> dates = getDate(date.text(), communityLang, ideaDateTime); 
+					voteMeta.put("date", dates.get("approximate"));
+					voteMeta.put("date_platform", dates.get("platform"));
 					
 					votesMeta.add(voteMeta);
 				}
@@ -356,7 +367,9 @@ public class StatisticReader extends HTMLReader {
 				commentMeta.put("author-id", "-1");
 			}
 			Element date = comment.getElementsByAttributeValueMatching("class",IDEA_COMMENTS_DATE).first();
-			commentMeta.put("date", getDate(date.text(),language,ideaDateTime));
+			HashMap<String,String> dates = getDate(date.text(),language,ideaDateTime);
+			commentMeta.put("date", dates.get("approximate"));
+			commentMeta.put("date_platform", dates.get("platform"));
 			Elements commentDesc = comment.getElementsByClass(IDEA_COMMENTS_DESCRIPTION);
 			String commentContent = "";
 			for (int i = 0; i < commentDesc.size(); i++) 
@@ -521,7 +534,8 @@ public class StatisticReader extends HTMLReader {
     	return false;
     }
     
-    private String getDate(String vagueDate, String communityLanguage, Date ideaDateTime) {
+    private HashMap<String,String> getDate(String vagueDate, String communityLanguage, Date ideaDateTime) {
+    	HashMap<String,String> date = new HashMap<String, String>();
     	Calendar cal = Calendar.getInstance();
         cal.setTime(cal.getTime());
     	int i = 0;
@@ -531,7 +545,6 @@ public class StatisticReader extends HTMLReader {
     	
     	//Remove all non-numeric characters
     	vagueDate = vagueDate.substring(i);
-    	
     	int num = Integer.parseInt(vagueDate.replaceAll("[^0-9]+", " ").trim());
     	
     	String translatedText = "";
@@ -550,7 +563,10 @@ public class StatisticReader extends HTMLReader {
     		cal.add(Calendar.YEAR, -num);
     	}
     	
-    	return getRandDate(cal.getTime(),ideaDateTime,cal);
+    	date.put("approximate", getRandDate(cal.getTime(),ideaDateTime,cal));
+    	date.put("platform", translatedText);
+    	
+    	return date;
     }
     
     private String getRandDate(Date maxDate, Date ideaDate, Calendar cal) {
