@@ -331,7 +331,7 @@ public class CommunityInfoReader extends HTMLReader {
 			ideasProcessed = 0;
 			
 			Util.printMessage("Getting idea's creation time of the community page: " + 
-						  currentPage,"info",logger);
+							   currentPage,"info",logger);
 			
 			Document doc = Jsoup.parse(page);
 
