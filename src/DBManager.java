@@ -517,8 +517,8 @@ public class DBManager {
 														"creation_datetime, description, " +
 														"ideascale_id, idea_id, " +
 														"store_datetime, parent_ideascale_id, " +
-														"author_type) " +
-														"values (?, ?, ?, ? , ?, ?, ?, ?, ?)");
+														"author_type, ideascale_datetime) " +
+														"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, Integer.parseInt(comment.get("author-id")));
 		preparedStatement.setString(2, comment.get("author-name"));
 		Date dateUtil = formatter.parse(comment.get("date"));
@@ -531,6 +531,7 @@ public class DBManager {
 		preparedStatement.setTimestamp(7, storeDateTime);
 		preparedStatement.setInt(8, Integer.parseInt(comment.get("parent")));
 		preparedStatement.setString(9, comment.get("author-type"));
+		preparedStatement.setString(10, comment.get("date_platform"));
 		
 		preparedStatement.executeUpdate();
 	    preparedStatement.close();
@@ -542,13 +543,15 @@ public class DBManager {
 		
 		preparedStatement = connection.prepareStatement("UPDATE comments " +
 														"SET author_type = ?, " +
-														"creation_datetime = ? " +
+														"creation_datetime = ?, " +
+														"ideascale_datetime = ? " +
 														"WHERE ideascale_id = ?");
 		preparedStatement.setString(1, comment.get("author-type"));
 		Date dateUtil = formatter.parse(comment.get("date"));
 		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());
 		preparedStatement.setTimestamp(2, ideaDateTime);
-		preparedStatement.setInt(3, idComment);
+		preparedStatement.setString(3, comment.get("date_platform"));
+		preparedStatement.setInt(4, idComment);
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
@@ -561,8 +564,9 @@ public class DBManager {
 		preparedStatement = connection.prepareStatement("INSERT INTO votes " +
 														"(author_id, author_name, " +
 														"creation_datetime, value, " +
-														"idea_id, store_datetime) " +
-														"values (?, ?, ?, ? , ?, ?)");
+														"idea_id, store_datetime," +
+														"ideascale_datetime) " +
+														"values (?, ?, ?, ? , ?, ?, ?)");
 		preparedStatement.setInt(1, Integer.parseInt(vote.get("author-id")));
 		preparedStatement.setString(2, vote.get("author-name"));
 		Date dateUtil = formatter.parse(vote.get("date"));
@@ -572,6 +576,7 @@ public class DBManager {
 		preparedStatement.setInt(5, idIdea);
 		java.sql.Timestamp storeDateTime = new java.sql.Timestamp(storeDT.getTime());				
 		preparedStatement.setTimestamp(6, storeDateTime);
+		preparedStatement.setString(7, vote.get("date_platform"));
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
@@ -582,12 +587,14 @@ public class DBManager {
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		
 		preparedStatement = connection.prepareStatement("UPDATE votes " +
-														"SET creation_datetime = ? " +
+														"SET creation_datetime = ?, " +
+														"ideascale_datetime = ? " +
 														"WHERE idea_id = ?");
 		Date dateUtil = formatter.parse(vote.get("date"));
 		java.sql.Timestamp ideaDateTime = new java.sql.Timestamp(dateUtil.getTime());				
 		preparedStatement.setTimestamp(1, ideaDateTime);
-		preparedStatement.setInt(2, idIdea);
+		preparedStatement.setString(2, vote.get("date_platform"));
+		preparedStatement.setInt(3, idIdea);
 		
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
@@ -679,6 +686,7 @@ public class DBManager {
 		return cpCommunities;
 	}
 	
+	
 	public void updateCommunityStats(HashMap<String,Object> stats, 
 										String idCommunity) 
 	throws SQLException 
@@ -749,8 +757,8 @@ public class DBManager {
 				"creation_datetime, tags, author_name, " +
 				"community_id, twitter, facebook, url, score, comments, " +
 				"similar_to, author_id, status, considered, page, list_pos, " +
-				"attachments) " +
-				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"attachments, ideascale_datetime) " +
+				"values (?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		preparedStatement.setInt(1, idIdea);
 		preparedStatement.setString(2, (String) idea.get("title"));
 		if (idea.get("description") != null)
@@ -816,6 +824,7 @@ public class DBManager {
 		preparedStatement.setInt(17, (Integer) idea.get("page"));
 		preparedStatement.setInt(18, (Integer) idea.get("list_pos"));
 		preparedStatement.setInt(19, (Integer) idea.get("attachments"));
+		preparedStatement.setString(20, (String) idea.get("idea_platform_datetime"));
 		
 		preparedStatement.executeUpdate();
 		
@@ -828,7 +837,8 @@ public class DBManager {
 				"UPDATE ideas SET " +
 				"twitter = ?, facebook = ?, score = ?, " +
 				"comments = ?, similar_to = ?, status = ?, author_name = ?, " +
-				"considered = ?, page = ?, list_pos = ?, attachments = ? " +
+				"considered = ?, page = ?, list_pos = ?, attachments = ?, " +
+				"ideascale_datetime = ? " +
 				"WHERE id = ?");
 		if (idea.get("twitter") != null)
 			preparedStatement.setInt(1, Integer.parseInt((String) idea.get("twitter")));
@@ -870,8 +880,9 @@ public class DBManager {
 		preparedStatement.setInt(9, (Integer) idea.get("page"));
 		preparedStatement.setInt(10, (Integer) idea.get("list_pos"));
 		preparedStatement.setInt(11, (Integer) idea.get("attachments"));
+		preparedStatement.setString(12, (String) idea.get("idea_platform_datetime"));
 		
-		preparedStatement.setInt(12, idIdea);
+		preparedStatement.setInt(13, idIdea);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
@@ -1046,6 +1057,26 @@ public class DBManager {
 														"WHERE orientation = ?");
 		preparedStatement.setBoolean(1, false);
 		preparedStatement.setString(2, "Civic Participation");
+		preparedStatement.executeUpdate();
+		preparedStatement.close();
+	}
+	
+	public void resetSpecialCPSyncFlag() throws SQLException {
+		preparedStatement = connection.prepareStatement("UPDATE communities SET " +
+														"synchronized = ? " +
+														"WHERE orientation = ? AND " +
+														"id in (?, ?, ?, ?, ?, ?, " +
+														"?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +
+														"?, ?, ?, ?, ?, ?)");
+		preparedStatement.setBoolean(1, false);
+		preparedStatement.setString(2, "Civic Participation");
+		int[] ids = {132,178,140,147,209,233,277,327,347,394,401,345,367,404,
+					 411,426,413,454,465,479,476,490};
+		int idx = 3;
+		for (int id : ids) {
+			preparedStatement.setInt(idx, id);
+			idx += 1;
+		}
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
