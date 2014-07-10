@@ -399,7 +399,7 @@ public class StatisticReader extends HTMLReader {
 			for (Element li : navTabs.children()) {
 				Element aLink = li.child(0);
 				numIdeas = aLink.text().replaceAll("[^0-9]+", " ").trim();
-				if (Integer.parseInt(numIdeas) != 0) {   //Save only tabs whose list of ideas is not empty
+				if (!numIdeas.isEmpty() && Integer.parseInt(numIdeas) != 0) {   //Save only tabs whose list of ideas is not empty
 					HashMap<String,String> tab = new HashMap<String,String>();
 					tab.put("url", aLink.attr("href"));
 					tab.put("ideas", numIdeas);
