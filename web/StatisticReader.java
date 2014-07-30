@@ -199,7 +199,7 @@ public class StatisticReader extends HTMLReader {
 		HashMap<String,Object> statistics = new HashMap<String,Object>();
 		String ideaURLEncoded = URLEncoder.encode(ideaURL, "utf-8");
 		String fullURL = communityURL+ideaURLEncoded;
-		//String fullURL = "http://lucysalinas2012.ideascale.com/a/dtd/Tenencia-Responsable-de-mascotas/222742-19774";
+		//String fullURL = "http://pdfvg.ideascale.com/a/dtd/Banda-larga-e-Wi-Fi-Razionalizzazione-e-potenziamento-in-FVG/368965-14912";
 		statistics.put("description", null);
 		statistics.put("tags", null);
 		statistics.put("facebook", null);
@@ -399,12 +399,12 @@ public class StatisticReader extends HTMLReader {
 			for (Element li : navTabs.children()) {
 				Element aLink = li.child(0);
 				numIdeas = aLink.text().replaceAll("[^0-9]+", " ").trim();
-				if (!numIdeas.isEmpty() && Integer.parseInt(numIdeas) != 0) {   //Save only tabs whose list of ideas is not empty
-					HashMap<String,String> tab = new HashMap<String,String>();
-					tab.put("url", aLink.attr("href"));
-					tab.put("ideas", numIdeas);
-					tabs.add(tab);
-				}
+				//if (!numIdeas.isEmpty() && Integer.parseInt(numIdeas) != 0) {   //Save only tabs whose list of ideas is not empty
+				HashMap<String,String> tab = new HashMap<String,String>();
+				tab.put("url", aLink.attr("href"));
+				tab.put("ideas", numIdeas);
+				tabs.add(tab);
+				//}
 			}
 		}
 		
